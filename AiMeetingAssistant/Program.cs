@@ -1,6 +1,7 @@
-﻿using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Connectors.Ollama;
+﻿using AiMeetingAssistant.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.Ollama;
 using System.Net.Http;
 using System.Text.Json;
 
@@ -14,6 +15,7 @@ builder.AddOllamaChatCompletion(
 builder.Plugins.AddFromType<MeetingPlugin>();
 builder.Plugins.AddFromType<JiraPlugin>();
 
+builder.Services.AddScoped<IJiraAiService, JiraMeetingService>();
 var kernel = builder.Build();
 
 string transcript = @"
@@ -103,9 +105,9 @@ catch (Exception ex)
 
 Console.ReadKey();
 
-public class MeetingTask
-{
-    public string task { get; set; } = string.Empty;
-    public string assignee { get; set; } = string.Empty;
-    public string due_date { get; set; } = string.Empty;
-}
+//public class MeetingTask
+//{
+//    public string task { get; set; } = string.Empty;
+//    public string assignee { get; set; } = string.Empty;
+//    public string due_date { get; set; } = string.Empty;
+//}

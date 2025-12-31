@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AiMeetingAssistant")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+69ce2890964792b282b08b79d13219981c70bd5b")]
 [assembly: System.Reflection.AssemblyProductAttribute("AiMeetingAssistant")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AiMeetingAssistant")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

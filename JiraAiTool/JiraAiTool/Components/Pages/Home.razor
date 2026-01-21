@@ -1,0 +1,158 @@
+﻿@page "/"
+@using JiraAiTool.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Web
+@inject OllamaService AIService
+@inject AppDbContext DbContext
+@inject JiraService Jira
+@rendermode InteractiveServer
+
+<div class="container mt-4">
+    <h3 class="mb-4">🧠 AI Meeting Assistant</h3>
+
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Meeting Transcript</h5>
+                    <textarea @bind="meetingText" class="form-control" rows="6"
+                              placeholder="Paste meeting notes or transcript here..."></textarea>
+                    <button class="btn btn-primary mt-3" @onclick="AnalyzeMeeting" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+
+                            <span>Analyze & Extract Tasks</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @if (pendingTasks != null && pendingTasks.Any())
+        {
+            <div class="col-md-12">
+                <div class="card shadow-sm border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <strong>Pending Approval</strong>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Task Description</th>
+                                    <th>Assignee</th>
+                                    <th>Deadline</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var task in pendingTasks)
+                                {
+                                    <tr>
+                                        <td><input @bind="task.Description" class="form-control" /></td>
+                                        <td><input @bind="task.AssigneeName" class="form-control" /></td>
+                                        <td><input type="date" @bind="task.Deadline" class="form-control" /></td>
+                                        <td>
+                                            <button class="btn btn-success btn-sm" @onclick="() => Approve(task)">Approve</button>
+                                            <button class="btn btn-outline-danger btn-sm" @onclick="() => Delete(task)">Delete</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string meetingText = "";
+    private bool isProcessing = false;
+    private List<TaskItem> pendingTasks = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPendingTasks();
+    }
+
+    private async Task LoadPendingTasks()
+    {
+        pendingTasks = await DbContext.Tasks
+            .Where(t => !t.IsApproved)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+    }
+
+    private async Task AnalyzeMeeting()
+    {
+        if (string.IsNullOrWhiteSpace(meetingText)) return;
+
+        isProcessing = true;
+        try
+        {
+            var doc = new MeetingDocument
+            {
+                Title = $"Meeting {DateTime.Now:MM/dd HH:mm}",
+                RawContent = meetingText
+            };
+            DbContext.Documents.Add(doc);
+            await DbContext.SaveChangesAsync();
+
+            var extractedTasks = await AIService.ExtractTasksAsync(meetingText);
+
+            foreach (var task in extractedTasks)
+            {
+                task.MeetingDocumentId = doc.Id;
+                task.CreatedAt = DateTime.UtcNow;
+                DbContext.Tasks.Add(task);
+            }
+
+            await DbContext.SaveChangesAsync();
+            meetingText = "";
+            await LoadPendingTasks();
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task Approve(TaskItem task)
+    {
+        Console.WriteLine($"Опит за одобрение на задача: {task.Description}");
+
+        try
+        {
+            var jiraKey = await Jira.CreateIssueAsync(task);
+
+            if (!string.IsNullOrEmpty(jiraKey))
+            {
+                task.IsApproved = true;
+                await DbContext.SaveChangesAsync();
+                await LoadPendingTasks();
+                Console.WriteLine($"Успешно! Jira Key: {jiraKey}");
+            }
+            else
+            {
+                Console.WriteLine("JiraService върна празен ключ. Провери данните за достъп.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Грешка в UI метода Approve: {ex.Message}");
+        }
+    }
+
+    private async Task Delete(TaskItem task)
+    {
+        DbContext.Tasks.Remove(task);
+        await DbContext.SaveChangesAsync();
+        await LoadPendingTasks();
+    }
+}

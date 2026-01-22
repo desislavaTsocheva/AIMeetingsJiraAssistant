@@ -1,38 +1,46 @@
 ﻿@page "/"
 @using JiraAiTool.Models
 @using Microsoft.EntityFrameworkCore
-@using Microsoft.AspNetCore.Components.Web
-@inject OllamaService AIService
+@using Microsoft.AspNetCore.Components.Forms
+@inject JiraService Jira;
+@inject IServiceScopeFactory ServiceScopeFactory
 @inject AppDbContext DbContext
-@inject JiraService Jira
 @rendermode InteractiveServer
 
 <div class="container mt-4">
-    <h3 class="mb-4">🧠 AI Meeting Assistant</h3>
+    <h3>AI Meeting Assistant</h3>
 
-    <div class="row">
-        <div class="col-md-12 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Meeting Transcript</h5>
-                    <textarea @bind="meetingText" class="form-control" rows="6"
-                              placeholder="Paste meeting notes or transcript here..."></textarea>
-                    <button class="btn btn-primary mt-3" @onclick="AnalyzeMeeting" disabled="@isProcessing">
-                        @if (isProcessing)
-                        {
-                            <span class="spinner-border spinner-border-sm"></span>
-                        }
-                        else
-                        {
+    <div class="card p-3 mb-3">
+        <h5>Meeting Text</h5>
+        <textarea class="form-control" rows="6"
+                  @bind="meetingText"
+                  placeholder="Paste meeting text here..."
+                  disabled="@isFileInput">
+        </textarea>
+    </div>
 
-                            <span>Analyze & Extract Tasks</span>
-                        }
-                    </button>
-                </div>
-            </div>
-        </div>
+    <div class="card p-3 mb-3">
+        <h5>Upload File</h5>
+        <InputFile OnChange="OnFileSelected"
+                   accept=".pdf,.docx,.mp3,.wav"
+                   class="form-control" />
+    </div>
 
-        @if (pendingTasks != null && pendingTasks.Any())
+    <button class="btn btn-primary"
+            disabled="@isProcessing"
+            @onclick="Analyze">
+        @if (isProcessing)
+        {
+            <span class="spinner-border spinner-border-sm"></span>
+            <span class="ms-2">Processing...</span>
+        }
+        else
+        {
+            <span>Analyze</span>
+        }
+    </button>
+
+    @if (pendingTasks != null && pendingTasks.Any())
         {
             <div class="col-md-12">
                 <div class="card shadow-sm border-warning">
@@ -69,11 +77,15 @@
             </div>
         }
     </div>
-</div>
 
 @code {
+
     private string meetingText = "";
     private bool isProcessing = false;
+
+    private bool isFileInput = false;
+    private IBrowserFile? uploadedFile;
+
     private List<TaskItem> pendingTasks = new();
 
     protected override async Task OnInitializedAsync()
@@ -81,72 +93,144 @@
         await LoadPendingTasks();
     }
 
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        uploadedFile = e.File;
+        isFileInput = true;
+        meetingText = "";
+    }
+
+    private async Task Analyze()
+    {
+        if (isProcessing) return;
+
+        if (isFileInput && uploadedFile != null)
+            await AnalyzeFromFile();
+        else if (!string.IsNullOrWhiteSpace(meetingText))
+            await AnalyzeFromText();
+    }
+
+    private async Task AnalyzeFromText()
+    {
+        isProcessing = true;
+
+        using var scope = ServiceScopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var ai = scope.ServiceProvider.GetRequiredService<OllamaService>();
+
+        var doc = new MeetingDocument
+        {
+            Title = "Manual Text",
+            RawContent = meetingText
+        };
+
+        db.Documents.Add(doc);
+        await db.SaveChangesAsync();
+
+        var tasks = await ai.ExtractTasksAsync(meetingText);
+
+        foreach (var t in tasks)
+        {
+            t.MeetingDocumentId = doc.Id;
+            db.Tasks.Add(t);
+        }
+
+        await db.SaveChangesAsync();
+
+        meetingText = "";
+        await LoadPendingTasks();
+
+        isProcessing = false;
+    }
+
+
+    private async Task AnalyzeFromFile()
+    {
+        isProcessing = true;
+        StateHasChanged();
+
+        byte[] fileBytes;
+        string fileName;
+
+        using (var stream = uploadedFile!.OpenReadStream(20 * 1024 * 1024))
+        using (var ms = new MemoryStream())
+        {
+            await stream.CopyToAsync(ms);
+            fileBytes = ms.ToArray();
+            fileName = uploadedFile.Name;
+        }
+
+        using var scope = ServiceScopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var ai = scope.ServiceProvider.GetRequiredService<OllamaService>();
+        var fileService = scope.ServiceProvider.GetRequiredService<FileProcessingService>();
+
+        using var ms2 = new MemoryStream(fileBytes);
+
+        string text =
+            fileName.EndsWith(".pdf")
+                ? await fileService.ExtractTextFromPdf(ms2)
+                : fileName.EndsWith(".docx")
+                    ? fileService.ExtractTextFromWord(ms2)
+                    : await fileService.TranscribeAudio(ms2);
+
+        var doc = new MeetingDocument
+        {
+            Title = $"File: {fileName}",
+            RawContent = text
+        };
+
+        db.Documents.Add(doc);
+        await db.SaveChangesAsync();
+
+        var tasks = await ai.ExtractTasksAsync(text);
+
+        foreach (var t in tasks)
+        {
+            t.MeetingDocumentId = doc.Id;
+            t.IsApproved = false;
+            db.Tasks.Add(t);
+        }
+
+        await db.SaveChangesAsync();
+
+        await LoadPendingTasks();
+
+        isProcessing = false;
+        isFileInput = false;
+        uploadedFile = null;
+
+        StateHasChanged();
+    }
+
+
     private async Task LoadPendingTasks()
     {
         pendingTasks = await DbContext.Tasks
             .Where(t => !t.IsApproved)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync();
-    }
 
-    private async Task AnalyzeMeeting()
-    {
-        if (string.IsNullOrWhiteSpace(meetingText)) return;
-
-        isProcessing = true;
-        try
-        {
-            var doc = new MeetingDocument
-            {
-                Title = $"Meeting {DateTime.Now:MM/dd HH:mm}",
-                RawContent = meetingText
-            };
-            DbContext.Documents.Add(doc);
-            await DbContext.SaveChangesAsync();
-
-            var extractedTasks = await AIService.ExtractTasksAsync(meetingText);
-
-            foreach (var task in extractedTasks)
-            {
-                task.MeetingDocumentId = doc.Id;
-                task.CreatedAt = DateTime.UtcNow;
-                DbContext.Tasks.Add(task);
-            }
-
-            await DbContext.SaveChangesAsync();
-            meetingText = "";
-            await LoadPendingTasks();
-        }
-        finally
-        {
-            isProcessing = false;
-        }
+        StateHasChanged();
     }
 
     private async Task Approve(TaskItem task)
     {
-        Console.WriteLine($"Опит за одобрение на задача: {task.Description}");
+        var summary = task.Description.Length > 80
+            ? task.Description.Substring(0, 77) + "..."
+            : task.Description;
 
-        try
-        {
-            var jiraKey = await Jira.CreateIssueAsync(task);
+        var success = await Jira.CreateIssueAsync(summary, task.Description);
 
-            if (!string.IsNullOrEmpty(jiraKey))
-            {
-                task.IsApproved = true;
-                await DbContext.SaveChangesAsync();
-                await LoadPendingTasks();
-                Console.WriteLine($"Успешно! Jira Key: {jiraKey}");
-            }
-            else
-            {
-                Console.WriteLine("JiraService върна празен ключ. Провери данните за достъп.");
-            }
-        }
-        catch (Exception ex)
+        if (!success)
         {
-            Console.WriteLine($"Грешка в UI метода Approve: {ex.Message}");
+            Console.WriteLine("Jira rejected the issue. Task NOT marked approved.");
+            return;
         }
+
+        task.IsApproved = true;
+        await DbContext.SaveChangesAsync();
+        await LoadPendingTasks();
     }
 
     private async Task Delete(TaskItem task)

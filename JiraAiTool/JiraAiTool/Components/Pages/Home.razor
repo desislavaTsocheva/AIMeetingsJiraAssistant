@@ -220,11 +220,16 @@
             ? task.Description.Substring(0, 77) + "..."
             : task.Description;
 
-        var success = await Jira.CreateIssueAsync(summary, task.Description);
+        var success = await Jira.CreateIssueAsync(
+            summary,
+            task.Description,
+            task.CreatedAt,  
+            task.Deadline     
+        );
 
         if (!success)
         {
-            Console.WriteLine("Jira rejected the issue. Task NOT marked approved.");
+            Console.WriteLine("❌ Jira rejected issue");
             return;
         }
 
@@ -232,6 +237,7 @@
         await DbContext.SaveChangesAsync();
         await LoadPendingTasks();
     }
+
 
     private async Task Delete(TaskItem task)
     {

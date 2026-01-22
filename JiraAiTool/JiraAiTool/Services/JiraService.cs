@@ -18,13 +18,16 @@ public class JiraService
         var token = config["JiraSettings:ApiToken"];
 
         _http = new HttpClient();
-
         var authToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{email}:{token}"));
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
 
-    public async Task<bool> CreateIssueAsync(string summary, string description)
+    public async Task<bool> CreateIssueAsync(
+     string summary,
+     string description,
+     DateTime? startDate,
+     DateTime? endDate)
     {
         var payload = new
         {
@@ -32,43 +35,43 @@ public class JiraService
             {
                 project = new { key = _projectKey },
                 summary = summary,
+
                 description = new
                 {
                     type = "doc",
                     version = 1,
                     content = new[]
-                    {
-                        new {
-                            type = "paragraph",
-                            content = new[] {
-                                new { type = "text", text = description }
-                            }
-                        }
+            {
+                new {
+                    type = "paragraph",
+                    content = new[] {
+                        new { type = "text", text = description }
                     }
+                }
+            }
                 },
-                issuetype = new { name = "Task" }
+
+                issuetype = new { name = "Task" },
+                duedate = endDate?.ToString("yyyy-MM-dd"),
+                customfield_10015 = startDate?.ToString("yyyy-MM-dd")
             }
         };
 
         var json = JsonSerializer.Serialize(payload);
-        Console.WriteLine("Sending to Jira:");
-        Console.WriteLine(json);
-
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         var response = await _http.PostAsync($"{_baseUrl}/rest/api/3/issue", content);
-
-        var responseBody = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
         {
             Console.WriteLine("JIRA ERROR:");
-            Console.WriteLine(responseBody);
+            Console.WriteLine(body);
             return false;
         }
 
-        Console.WriteLine("Jira issue created:");
-        Console.WriteLine(responseBody);
+        Console.WriteLine("Jira task created with Start + Due date");
         return true;
     }
+
 }

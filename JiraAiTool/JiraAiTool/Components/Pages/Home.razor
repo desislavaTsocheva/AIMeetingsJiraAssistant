@@ -174,74 +174,85 @@
 
     private async Task AnalyzeFromFile()
     {
+        if (uploadedFile == null) return;
+
         isProcessing = true;
         StateHasChanged();
 
-        if (uploadedFile == null)
-            return;
-
-        byte[] fileBytes;
-        string fileName = uploadedFile.Name;
-
-        using (var ms = new MemoryStream())
+        try
         {
+            using var ms = new MemoryStream();
             await uploadedFile.OpenReadStream(20 * 1024 * 1024).CopyToAsync(ms);
-            fileBytes = ms.ToArray();
-        }
 
-        using var scope = ServiceScopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var ai = scope.ServiceProvider.GetRequiredService<OllamaService>();
-        var fileService = scope.ServiceProvider.GetRequiredService<FileProcessingService>();
+            using var scope = ServiceScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var ai = scope.ServiceProvider.GetRequiredService<OllamaService>();
+            var fileService = scope.ServiceProvider.GetRequiredService<FileProcessingService>();
 
-        string extractedText = "";
+            string fileName = uploadedFile.Name;
+            string extractedText = "";
 
-        using (var fileStream = new MemoryStream(fileBytes))
-        {
-            if (fileName.EndsWith(".pdf"))
-                extractedText = await fileService.ExtractTextFromPdf(fileStream);
-
-            else if (fileName.EndsWith(".docx"))
-                extractedText = fileService.ExtractTextFromWord(fileStream);
-
+            if (fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                ms.Position = 0;
+                extractedText = await fileService.ExtractTextFromPdf(ms);
+            }
+            else if (fileName.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+            {
+                ms.Position = 0;
+                extractedText = fileService.ExtractTextFromWord(ms);
+            }
             else
-                extractedText = await fileService.TranscribeAudio(fileStream);
-        }
+            {
+                ms.Position = 0;
+                extractedText = await fileService.TranscribeAudio(ms);
+            }
 
-        if (string.IsNullOrWhiteSpace(extractedText))
+            Console.WriteLine($"Extracted text length: {extractedText.Length}");
+            if (extractedText.Length > 0)
+                Console.WriteLine($"Text preview: {extractedText.Substring(0, Math.Min(200, extractedText.Length))}");
+
+            if (string.IsNullOrWhiteSpace(extractedText))
+            {
+                Console.WriteLine("No text extracted from the file");
+                return;
+            }
+
+            var doc = new MeetingDocument { Title = $"File: {fileName}", RawContent = extractedText };
+            db.Documents.Add(doc);
+            await db.SaveChangesAsync();
+
+            var tasks = await ai.ExtractTasksAsync(extractedText);
+            foreach (var t in tasks)
+            {
+                t.MeetingDocumentId = doc.Id;
+                t.IsApproved = false;
+
+                if (!string.IsNullOrEmpty(t.AssigneeName))
+                {
+                    var match = jiraUsers.FirstOrDefault(u =>
+                        u.displayName.Contains(t.AssigneeName, StringComparison.OrdinalIgnoreCase));
+                    t.JiraAccountId = match?.accountId;
+                }
+
+                db.Tasks.Add(t);
+            }
+
+            await db.SaveChangesAsync();
+            await LoadPendingTasks();
+
+            uploadedFile = null;
+            isFileInput = false;
+        }
+        catch (Exception ex)
         {
-            Console.WriteLine("No text extracted from file");
+            Console.WriteLine($"Error processing file: {ex.Message}");
+        }
+        finally
+        {
             isProcessing = false;
-            return;
+            StateHasChanged();
         }
-
-        var doc = new MeetingDocument
-        {
-            Title = $"File: {fileName}",
-            RawContent = extractedText
-        };
-
-        db.Documents.Add(doc);
-        await db.SaveChangesAsync();
-
-        var tasks = await ai.ExtractTasksAsync(extractedText);
-
-        foreach (var t in tasks)
-        {
-            t.MeetingDocumentId = doc.Id;
-            t.IsApproved = false;
-            db.Tasks.Add(t);
-        }
-
-        await db.SaveChangesAsync();
-
-        await LoadPendingTasks();
-
-        uploadedFile = null;
-        isFileInput = false;
-        isProcessing = false;
-
-        StateHasChanged();
     }
 
 

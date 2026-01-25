@@ -57,15 +57,6 @@ public class JiraService
         return JsonSerializer.Deserialize<List<JiraUser>>(json) ?? new();
     }
 
-
-    public class JiraUser
-    {
-        public string accountId { get; set; } = "";
-        public string displayName { get; set; } = "";
-        public string emailAddress { get; set; } = "";
-    }
-
-
     public async Task<bool> CreateIssueAsync(
      string summary,
      string description,
@@ -117,6 +108,13 @@ public class JiraService
 
         Console.WriteLine("Jira task created with Start + Due date");
         return true;
+    }
+
+    public class JiraUser
+    {
+        public string accountId { get; set; } = "";
+        public string displayName { get; set; } = "";
+        public string emailAddress { get; set; } = "";
     }
 
 }

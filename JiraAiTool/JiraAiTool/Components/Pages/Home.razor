@@ -7,7 +7,176 @@
 @inject AppDbContext DbContext
 @rendermode InteractiveServer
 
-<div class="container mt-4">
+
+<div class="page-wrapper">
+    <div class="header">
+        <h2>AI Meeting Assistant</h2>
+        <p>Extract tasks from meetings and send them to Jira</p>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h5>Meeting Text</h5>
+            <textarea class="modern-textarea" rows="7"
+                      placeholder="Paste meeting text here..."
+                      @bind="meetingText"
+                      disabled="@isProcessing"></textarea>
+        </div>
+
+        <div class="card">
+            <h5>Upload File</h5>
+            <InputFile OnChange="OnFileSelected" class="modern-file"
+                       accept=".pdf,.docx,.mp3,.wav"
+                       disabled="@isProcessing" />
+        </div>
+
+        <div class="card action-card">
+            <button class="btn-gradient" @onclick="Analyze" disabled="@isProcessing">
+                @if (isProcessing)
+                {
+                    <span>Processing...</span>
+                }
+                else
+                {
+                    <span>Analyze Meeting</span>
+                }
+            </button>
+        </div>
+
+        @if (pendingTasks != null && pendingTasks.Any())
+        {
+            <div class="card full-width">
+                <h5>Pending Task Approval</h5>
+
+                <div class="table-responsive">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Assignee (Jira)</th>
+                                <th>Deadline</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var task in pendingTasks)
+                            {
+                                <tr>
+                                    <td><input class="modern-input" @bind="task.Description" /></td>
+                                    <td>
+                                        <select class="modern-input" @onchange="(e) => OnAssigneeChanged(task, e.Value?.ToString())">
+                                            <option value="">-- Select User --</option>
+                                            @foreach (var user in jiraUsers)
+                                            {
+                                                <option value="@user.accountId" selected="@(task.JiraAccountId == user.accountId)">
+                                                    @user.displayName
+                                                </option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td><input type="date" class="modern-input" @bind="task.Deadline" /></td>
+                                    <td class="actions">
+                                        <button class="btn-success" @onclick="() => Approve(task)">Approve</button>
+                                        <button class="btn-danger" @onclick="() => Delete(task)">Delete</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    /* Запазваме твоя CSS, но добавяме малка корекция за селекта */
+    select.modern-input {
+        cursor: pointer;
+    }
+
+    .btn-gradient:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    /* Твоят останал CSS тук... */
+    .page-wrapper {
+        max-width: 1200px;
+        margin: auto;
+        padding: 32px;
+        font-family: Inter, sans-serif;
+        background: #f8fafc;
+    }
+
+    .header {
+        text-align: center;
+        margin-bottom: 28px;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 20px;
+    }
+
+    .card {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 8px 28px rgba(0,0,0,0.06);
+    }
+
+    .full-width {
+        grid-column: 1 / -1;
+    }
+
+    .modern-textarea, .modern-input {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        padding: 12px;
+    }
+
+    .btn-gradient {
+        width: 100%;
+        padding: 14px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #6366f1, #22c55e);
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .modern-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-success {
+        background: #22c55e;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+    }
+
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+    }
+</style>
+@* <div class="container mt-4">
     <h3>AI Meeting Assistant</h3>
 
     <div class="card p-3 mb-3">
@@ -41,42 +210,65 @@
     </button>
 
     @if (pendingTasks != null && pendingTasks.Any())
-        {
-            <div class="col-md-12">
-                <div class="card shadow-sm border-warning">
-                    <div class="card-header bg-warning text-dark">
-                        <strong>Pending Approval</strong>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-striped align-middle">
-                            <thead>
+    {
+        <div class="col-md-12">
+            <div class="card shadow-sm border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <strong>Pending Approval</strong>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Task Description</th>
+                                <th>Assignee</th>
+                                <th>Deadline</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var task in pendingTasks)
+                            {
                                 <tr>
-                                    <th>Task Description</th>
-                                    <th>Assignee</th>
-                                    <th>Deadline</th>
-                                    <th>Actions</th>
+                                    <td><input @bind="task.Description" class="form-control" /></td>
+                                                                     <td><input @bind="task.AssigneeName" class="form-control" /></td>
+                                    <td>
+                                        @if (string.IsNullOrEmpty(task.JiraAccountId))
+                                        {
+                                            <select class="form-select"
+                                                    @onchange="(e) => OnAssigneeChanged(task, e.Value?.ToString())">
+                                                <option value="">-- Select Jira User --</option>
+
+                                                @foreach (var user in jiraUsers)
+                                                {
+                                                    <option value="@user.accountId">
+                                                        @user.displayName
+                                                    </option>
+                                                }
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">
+                                                Assigned ✔
+                                            </span>
+                                        }
+                                    </td>
+
+                                    <td><input type="date" @bind="task.Deadline" class="form-control" /></td>
+                                    <td>
+                                        <button class="btn btn-success btn-sm" @onclick="() => Approve(task)">Approve</button>
+                                        <button class="btn btn-outline-danger btn-sm" @onclick="() => Delete(task)">Delete</button>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var task in pendingTasks)
-                                {
-                                    <tr>
-                                        <td><input @bind="task.Description" class="form-control" /></td>
-                                        <td><input @bind="task.AssigneeName" class="form-control" /></td>
-                                        <td><input type="date" @bind="task.Deadline" class="form-control" /></td>
-                                        <td>
-                                            <button class="btn btn-success btn-sm" @onclick="() => Approve(task)">Approve</button>
-                                            <button class="btn btn-outline-danger btn-sm" @onclick="() => Delete(task)">Delete</button>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                            }
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        }
-    </div>
+        </div>
+    }
+</div>*@
 
 @code {
 
@@ -87,11 +279,26 @@
     private IBrowserFile? uploadedFile;
 
     private List<TaskItem> pendingTasks = new();
+    private List<JiraService.JiraUser> jiraUsers = new();
 
     protected override async Task OnInitializedAsync()
     {
+        jiraUsers = await Jira.GetAllUsersAsync();
+        Console.WriteLine($"Loaded Jira users: {jiraUsers.Count}");
         await LoadPendingTasks();
     }
+
+    private void OnAssigneeChanged(TaskItem task, string? accountId)
+    {
+        if (string.IsNullOrEmpty(accountId))
+            return;
+
+        var user = jiraUsers.FirstOrDefault(u => u.accountId == accountId);
+
+        task.JiraAccountId = accountId;
+        task.AssigneeName = user?.displayName;
+    }
+
 
     private void OnFileSelected(InputFileChangeEventArgs e)
     {
@@ -149,15 +356,16 @@
         isProcessing = true;
         StateHasChanged();
 
-        byte[] fileBytes;
-        string fileName;
+        if (uploadedFile == null)
+            return;
 
-        using (var stream = uploadedFile!.OpenReadStream(20 * 1024 * 1024))
+        byte[] fileBytes;
+        string fileName = uploadedFile.Name;
+
         using (var ms = new MemoryStream())
         {
-            await stream.CopyToAsync(ms);
+            await uploadedFile.OpenReadStream(20 * 1024 * 1024).CopyToAsync(ms);
             fileBytes = ms.ToArray();
-            fileName = uploadedFile.Name;
         }
 
         using var scope = ServiceScopeFactory.CreateScope();
@@ -165,25 +373,37 @@
         var ai = scope.ServiceProvider.GetRequiredService<OllamaService>();
         var fileService = scope.ServiceProvider.GetRequiredService<FileProcessingService>();
 
-        using var ms2 = new MemoryStream(fileBytes);
+        string extractedText = "";
 
-        string text =
-            fileName.EndsWith(".pdf")
-                ? await fileService.ExtractTextFromPdf(ms2)
-                : fileName.EndsWith(".docx")
-                    ? fileService.ExtractTextFromWord(ms2)
-                    : await fileService.TranscribeAudio(ms2);
+        using (var fileStream = new MemoryStream(fileBytes))
+        {
+            if (fileName.EndsWith(".pdf"))
+                extractedText = await fileService.ExtractTextFromPdf(fileStream);
+
+            else if (fileName.EndsWith(".docx"))
+                extractedText = fileService.ExtractTextFromWord(fileStream);
+
+            else
+                extractedText = await fileService.TranscribeAudio(fileStream);
+        }
+
+        if (string.IsNullOrWhiteSpace(extractedText))
+        {
+            Console.WriteLine("No text extracted from file");
+            isProcessing = false;
+            return;
+        }
 
         var doc = new MeetingDocument
         {
             Title = $"File: {fileName}",
-            RawContent = text
+            RawContent = extractedText
         };
 
         db.Documents.Add(doc);
         await db.SaveChangesAsync();
 
-        var tasks = await ai.ExtractTasksAsync(text);
+        var tasks = await ai.ExtractTasksAsync(extractedText);
 
         foreach (var t in tasks)
         {
@@ -196,12 +416,13 @@
 
         await LoadPendingTasks();
 
-        isProcessing = false;
-        isFileInput = false;
         uploadedFile = null;
+        isFileInput = false;
+        isProcessing = false;
 
         StateHasChanged();
     }
+
 
 
     private async Task LoadPendingTasks()
@@ -216,6 +437,14 @@
 
     private async Task Approve(TaskItem task)
     {
+        string? accountId = task.JiraAccountId;
+
+        if (accountId == null && !string.IsNullOrWhiteSpace(task.AssigneeName))
+        {
+            accountId = await Jira.FindUserAccountIdAsync(task.AssigneeName);
+            task.JiraAccountId = accountId;
+        }
+
         var summary = task.Description.Length > 80
             ? task.Description.Substring(0, 77) + "..."
             : task.Description;
@@ -223,20 +452,20 @@
         var success = await Jira.CreateIssueAsync(
             summary,
             task.Description,
-            task.CreatedAt,  
-            task.Deadline     
+            task.CreatedAt,
+            task.Deadline,
+            accountId
         );
 
         if (!success)
-        {
-            Console.WriteLine("❌ Jira rejected issue");
             return;
-        }
 
         task.IsApproved = true;
         await DbContext.SaveChangesAsync();
         await LoadPendingTasks();
     }
+
+
 
 
     private async Task Delete(TaskItem task)

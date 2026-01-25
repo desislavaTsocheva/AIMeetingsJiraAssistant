@@ -22,7 +22,7 @@ public class OllamaService
 
         Each object MUST have these exact keys:
         - ""Description"": (The action to be done)
-        - ""AssigneeName"": (Who should do it)
+        - ""AssigneeName"": (Who should do it). For 'AssigneeName', try to find the full name of the person mentioned as responsible.
         - ""Deadline"": (Date in YYYY-MM-DD or null if not mentioned)
 
         Text to analyze:

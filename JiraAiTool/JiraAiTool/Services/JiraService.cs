@@ -23,11 +23,55 @@ public class JiraService
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
 
+    public async Task<string?> FindUserAccountIdAsync(string name)
+    {
+        var response = await _http.GetAsync(
+            $"{_baseUrl}/rest/api/3/user/search?query={Uri.EscapeDataString(name)}"
+        );
+
+        var json = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        var users = JsonSerializer.Deserialize<List<JiraUser>>(json);
+
+        return users?.FirstOrDefault()?.accountId;
+    }
+
+    public async Task<List<JiraUser>> GetAllUsersAsync()
+    {
+        var url = $"{_baseUrl}/rest/api/3/users/search?query=.&maxResults=1000";
+
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+        var response = await _http.SendAsync(request);
+        var json = await response.Content.ReadAsStringAsync();
+
+        Console.WriteLine("Jira users response:");
+        Console.WriteLine(json);
+
+        if (!response.IsSuccessStatusCode)
+            return new List<JiraUser>();
+
+        return JsonSerializer.Deserialize<List<JiraUser>>(json) ?? new();
+    }
+
+
+    public class JiraUser
+    {
+        public string accountId { get; set; } = "";
+        public string displayName { get; set; } = "";
+        public string emailAddress { get; set; } = "";
+    }
+
+
     public async Task<bool> CreateIssueAsync(
      string summary,
      string description,
      DateTime? startDate,
-     DateTime? endDate)
+     DateTime? endDate,
+     string? assigneeId = null)
     {
         var payload = new
         {
@@ -53,7 +97,8 @@ public class JiraService
 
                 issuetype = new { name = "Task" },
                 duedate = endDate?.ToString("yyyy-MM-dd"),
-                customfield_10015 = startDate?.ToString("yyyy-MM-dd")
+                customfield_10015 = startDate?.ToString("yyyy-MM-dd"),
+                assignee = assigneeId != null ? new { id = assigneeId } : null
             }
         };
 

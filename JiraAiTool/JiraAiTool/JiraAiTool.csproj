@@ -16,10 +16,15 @@
     </PackageReference>
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.69.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.30.0-alpha" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="OllamaSharp" Version="5.4.12" />
     <PackageReference Include="PdfPig" Version="0.1.9" />
     <PackageReference Include="Whisper.net" Version="1.9.0" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\models\" />
   </ItemGroup>
 
 </Project>

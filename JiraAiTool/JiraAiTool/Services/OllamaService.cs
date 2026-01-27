@@ -24,7 +24,7 @@ public class OllamaService
         - ""Description"": (The action to be done)
         - ""AssigneeName"": (Who should do it). For 'AssigneeName', try to find the full name of the person mentioned as responsible.
         - ""Deadline"": (Date in YYYY-MM-DD or null if not mentioned)
-
+        - ""Priority"":(If deadline is soon then 'Priority' High, if it's said in the text set like its said or if there is no information then 'Priority' Middle)
         Text to analyze:
         {transcript}";
 

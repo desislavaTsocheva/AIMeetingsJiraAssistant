@@ -1,4 +1,5 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
+using NAudio.Wave;
 using UglyToad.PdfPig;
 using Whisper.net;
 
@@ -21,8 +22,33 @@ public class FileProcessingService
     public async Task<string> TranscribeAudio(Stream stream)
     {
         stream.Position = 0;
+        using var outputStream = new MemoryStream();
 
-        var modelPath = "wwwroot/models/ggml-base.bin";
+        try
+        {
+            using (var reader = new StreamMediaFoundationReader(stream))
+            {
+                var outFormat = new WaveFormat(16000, 1); 
+                using (var resampler = new MediaFoundationResampler(reader, outFormat))
+                {
+                    resampler.ResamplerQuality = 60; 
+                    WaveFileWriter.WriteWavFileToStream(outputStream, resampler);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Audio Conversion Error: {ex.Message}");
+            return "Грешка при обработка на аудио файла.";
+        }
+
+        outputStream.Position = 0;
+        var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "models", "ggml-base.bin");
+
+        if (!File.Exists(modelPath))
+        {
+            return "Моделът ggml-base.bin липсва в wwwroot/models/";
+        }
 
         using var factory = WhisperFactory.FromPath(modelPath);
         using var processor = factory.CreateBuilder()
@@ -31,11 +57,11 @@ public class FileProcessingService
 
         var sb = new System.Text.StringBuilder();
 
-        await foreach (var segment in processor.ProcessAsync(stream))
+        await foreach (var segment in processor.ProcessAsync(outputStream))
         {
             sb.Append(segment.Text).Append(" ");
         }
 
-        return sb.ToString();
+        return sb.ToString().Trim();
     }
 }

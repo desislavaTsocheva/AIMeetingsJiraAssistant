@@ -26,9 +26,7 @@
 
         <div class="card">
             <h5>Upload File</h5>
-            <InputFile OnChange="OnFileSelected" class="modern-file"
-                       accept=".pdf,.docx,.mp3,.wav"
-                       disabled="@isProcessing" />
+            <InputFile OnChange="OnFileSelected" accept=".pdf,.docx,.mp3,.wav" disabled="@isProcessing" />
         </div>
 
         <div class="card action-card">
@@ -56,6 +54,7 @@
                                 <th>Description</th>
                                 <th>Assignee (Jira)</th>
                                 <th>Deadline</th>
+                                <th>Priority</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -75,7 +74,9 @@
                                             }
                                         </select>
                                     </td>
+
                                     <td><input type="date" class="modern-input" @bind="task.Deadline" /></td>
+                                    <td><input class="modern-input" @bind="task.Priority" /></td>
                                     <td class="actions">
                                         <button class="btn-success" @onclick="() => Approve(task)">Approve</button>
                                         <button class="btn-danger" @onclick="() => Delete(task)">Delete</button>
@@ -92,7 +93,6 @@
 
 
 @code {
-
     private string meetingText = "";
     private bool isProcessing = false;
 
@@ -105,7 +105,7 @@
     protected override async Task OnInitializedAsync()
     {
         jiraUsers = await Jira.GetAllUsersAsync();
-        Console.WriteLine($"Loaded Jira users: {jiraUsers.Count}");
+        //Console.WriteLine($"Loaded Jira users: {jiraUsers.Count}");
         await LoadPendingTasks();
     }
 
@@ -296,9 +296,6 @@
         await DbContext.SaveChangesAsync();
         await LoadPendingTasks();
     }
-
-
-
 
     private async Task Delete(TaskItem task)
     {

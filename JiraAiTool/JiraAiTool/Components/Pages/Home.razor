@@ -62,10 +62,10 @@
                             @foreach (var task in pendingTasks)
                             {
                                 <tr>
-                                    <td><input class="modern-input" @bind="task.Description" /></td>
+                                    <td style="width:600px"><input class="modern-input" @bind="task.Description" /></td>
                                     <td>
                                         <select class="modern-input" @onchange="(e) => OnAssigneeChanged(task, e.Value?.ToString())">
-                                            <option value="">-- Select User --</option>
+                                            <option value="">-- User --</option>
                                             @foreach (var user in jiraUsers)
                                             {
                                                 <option value="@user.accountId" selected="@(task.JiraAccountId == user.accountId)">
@@ -76,10 +76,16 @@
                                     </td>
 
                                     <td><input type="date" class="modern-input" @bind="task.Deadline" /></td>
-                                    <td><input class="modern-input" @bind="task.Priority" /></td>
+                                    <td>
+                                        <select class="modern-input" @bind="task.Priority" style="width:80px">
+                                            <option value="High">High</option>
+                                            <option value="Medium">Medium</option>
+                                            <option value="Low">Low</option>
+                                        </select>
+                                    </td>
                                     <td class="actions">
-                                        <button class="btn-success" @onclick="() => Approve(task)">Approve</button>
-                                        <button class="btn-danger" @onclick="() => Delete(task)">Delete</button>
+                                        <button class="btn-success" @onclick="() => Approve(task)">&#10004;</button>
+                                        <button class="btn-danger" @onclick="() => Delete(task)">&#10008;</button>
                                     </td>
                                 </tr>
                             }
@@ -105,7 +111,6 @@
     protected override async Task OnInitializedAsync()
     {
         jiraUsers = await Jira.GetAllUsersAsync();
-        //Console.WriteLine($"Loaded Jira users: {jiraUsers.Count}");
         await LoadPendingTasks();
     }
 
@@ -145,6 +150,7 @@
         using var scope = ServiceScopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var ai = scope.ServiceProvider.GetRequiredService<OllamaService>();
+        var jiraUsers = await Jira.GetAllUsersAsync();
 
         var doc = new MeetingDocument
         {
@@ -155,11 +161,24 @@
         db.Documents.Add(doc);
         await db.SaveChangesAsync();
 
-        var tasks = await ai.ExtractTasksAsync(meetingText);
+        var tasks = await ai.ExtractTasksAsync(meetingText, jiraUsers);
 
         foreach (var t in tasks)
         {
             t.MeetingDocumentId = doc.Id;
+
+            if (!string.IsNullOrEmpty(t.AssigneeName))
+            {
+                var match = jiraUsers.FirstOrDefault(u =>
+                    u.displayName.Contains(t.AssigneeName, StringComparison.OrdinalIgnoreCase));
+
+                if (match != null)
+                {
+                    t.JiraAccountId = match.accountId;
+                    t.AssigneeName = match.displayName;
+                }
+            }
+
             db.Tasks.Add(t);
         }
 
@@ -221,19 +240,29 @@
             var doc = new MeetingDocument { Title = $"File: {fileName}", RawContent = extractedText };
             db.Documents.Add(doc);
             await db.SaveChangesAsync();
-
-            var tasks = await ai.ExtractTasksAsync(extractedText);
+            var jiraUsers = await Jira.GetAllUsersAsync();
+            var tasks = await ai.ExtractTasksAsync(extractedText, jiraUsers);
             foreach (var t in tasks)
             {
                 t.MeetingDocumentId = doc.Id;
                 t.IsApproved = false;
 
-                if (!string.IsNullOrEmpty(t.AssigneeName))
+                var match = jiraUsers.FirstOrDefault(u =>
+                u.displayName.Equals(t.AssigneeName, StringComparison.OrdinalIgnoreCase) ||
+                t.AssigneeName.Contains(u.displayName, StringComparison.OrdinalIgnoreCase) ||
+                u.displayName.Contains(t.AssigneeName, StringComparison.OrdinalIgnoreCase));
+
+                if (match != null)
                 {
-                    var match = jiraUsers.FirstOrDefault(u =>
-                        u.displayName.Contains(t.AssigneeName, StringComparison.OrdinalIgnoreCase));
-                    t.JiraAccountId = match?.accountId;
+                    t.JiraAccountId = match.accountId;
                 }
+
+                // if (!string.IsNullOrEmpty(t.AssigneeName))
+                // {
+                //     var match = jiraUsers.FirstOrDefault(u =>
+                //         u.displayName.Contains(t.AssigneeName, StringComparison.OrdinalIgnoreCase));
+                //     t.JiraAccountId = match?.accountId;
+                // }
 
                 db.Tasks.Add(t);
             }
@@ -254,8 +283,6 @@
             StateHasChanged();
         }
     }
-
-
 
     private async Task LoadPendingTasks()
     {
@@ -286,6 +313,7 @@
             task.Description,
             task.CreatedAt,
             task.Deadline,
+            task.Priority,
             accountId
         );
 

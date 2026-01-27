@@ -62,6 +62,7 @@ public class JiraService
      string description,
      DateTime? startDate,
      DateTime? endDate,
+     string priorityName,
      string? assigneeId = null)
     {
         var payload = new
@@ -70,6 +71,7 @@ public class JiraService
             {
                 project = new { key = _projectKey },
                 summary = summary,
+                priority=new { name = priorityName },
 
                 description = new
                 {

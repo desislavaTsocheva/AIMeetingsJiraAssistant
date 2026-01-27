@@ -13,8 +13,9 @@ public class OllamaService
         _ollama.SelectedModel = "llama3:8b";
     }
 
-    public async Task<List<TaskItem>> ExtractTasksAsync(string transcript)
+    public async Task<List<TaskItem>> ExtractTasksAsync(string transcript, List<JiraService.JiraUser> jiraUsers)
     {
+        var usersText = string.Join(", ", jiraUsers.Select(u => u.displayName));
         string prompt = $@"
         Analyze the meeting transcript and extract all tasks.
         Return ONLY a valid JSON array of objects. 
@@ -22,9 +23,9 @@ public class OllamaService
 
         Each object MUST have these exact keys:
         - ""Description"": (The action to be done)
-        - ""AssigneeName"": (Who should do it). For 'AssigneeName', try to find the full name of the person mentioned as responsible.
-        - ""Deadline"": (Date in YYYY-MM-DD or null if not mentioned)
-        - ""Priority"":(If deadline is soon then 'Priority' High, if it's said in the text set like its said or if there is no information then 'Priority' Middle)
+        - ""AssigneeName"": (Who should do it). ""AssigneeName"": (Extract the name of the person responsible. Match it exactly with one of these names: {usersText}. If no match is found, return the most likely name from the text.).
+        - ""Deadline"": (Date in 2026-MM-DD or null if not mentioned)
+        - ""Priority"":(If deadline is soon then 'Priority' High, if it's said in the text set like its said or if there is no information then set 'Priority' to Medium)
         Text to analyze:
         {transcript}";
 

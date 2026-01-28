@@ -190,7 +190,6 @@
         isProcessing = false;
     }
 
-
     private async Task AnalyzeFromFile()
     {
         if (uploadedFile == null) return;
@@ -256,13 +255,6 @@
                 {
                     t.JiraAccountId = match.accountId;
                 }
-
-                // if (!string.IsNullOrEmpty(t.AssigneeName))
-                // {
-                //     var match = jiraUsers.FirstOrDefault(u =>
-                //         u.displayName.Contains(t.AssigneeName, StringComparison.OrdinalIgnoreCase));
-                //     t.JiraAccountId = match?.accountId;
-                // }
 
                 db.Tasks.Add(t);
             }

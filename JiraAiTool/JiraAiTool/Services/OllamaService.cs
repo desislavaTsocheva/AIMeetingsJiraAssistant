@@ -22,7 +22,7 @@ public class OllamaService
         Do not include markdown formatting like ```json.
 
         Each object MUST have these exact keys:
-        - ""Description"": (The action to be done)
+        - ""Description"": (The action to be done) You have to analyze the description on the base of what transcript said and based on your knowleage and give additional information and instructions how more efficient to do the action.
         - ""AssigneeName"": (Who should do it). ""AssigneeName"": (Extract the name of the person responsible. Match it exactly with one of these names: {usersText}. If no match is found, return the most likely name from the text.).
         - ""Deadline"": (Date in 2026-MM-DD or null if not mentioned)
         - ""Priority"":(If deadline is soon then 'Priority' High, if it's said in the text set like its said or if there is no information then set 'Priority' to Medium)

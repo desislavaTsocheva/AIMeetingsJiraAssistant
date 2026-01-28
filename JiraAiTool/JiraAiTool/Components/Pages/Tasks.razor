@@ -1,0 +1,140 @@
+﻿@page "/tasks"
+@using JiraAiTool.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@inject JiraService Jira;
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject AppDbContext DbContext
+@rendermode InteractiveServer
+
+        @if (pendingTasks != null && pendingTasks.Any())
+        {
+            <div class="card full-width">
+                <h5>Pending Task Approval</h5>
+
+                <div class="table-responsive">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Assignee (Jira)</th>
+                                <th>Deadline</th>
+                                <th>Priority</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var task in pendingTasks)
+                            {
+                                <tr>
+                                    <td style="width:600px"><input class="modern-input" @bind="task.Description" /></td>
+                                    <td>
+                                        <select class="modern-input" @onchange="(e) => OnAssigneeChanged(task, e.Value?.ToString())">
+                                            <option value="">-- User --</option>
+                                            @foreach (var user in jiraUsers)
+                                            {
+                                                <option value="@user.accountId" selected="@(task.JiraAccountId == user.accountId)">
+                                                    @user.displayName
+                                                </option>
+                                            }
+                                        </select>
+                                    </td>
+
+                                    <td><input type="date" class="modern-input" @bind="task.Deadline" /></td>
+                                    <td>
+                                        <select class="modern-input" @bind="task.Priority" style="width:80px">
+                                            <option value="High">High</option>
+                                            <option value="Medium">Medium</option>
+                                            <option value="Low">Low</option>
+                                        </select>
+                                    </td>
+                                    <td class="actions">
+                                        <button class="btn-success" @onclick="() => Approve(task)">&#10004;</button>
+                                        <button class="btn-danger" @onclick="() => Delete(task)">&#10008;</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+
+@code {
+    private string meetingText = "";
+    private bool isProcessing = false;
+
+    private bool isFileInput = false;
+    private IBrowserFile? uploadedFile;
+
+    private List<TaskItem> pendingTasks = new();
+    private List<JiraService.JiraUser> jiraUsers = new();
+
+    private void OnAssigneeChanged(TaskItem task, string? accountId)
+    {
+        if (string.IsNullOrEmpty(accountId))
+            return;
+
+        var user = jiraUsers.FirstOrDefault(u => u.accountId == accountId);
+
+        task.JiraAccountId = accountId;
+        task.AssigneeName = user?.displayName;
+    }
+
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        uploadedFile = e.File;
+        isFileInput = true;
+        meetingText = "";
+    }
+
+    private async Task LoadPendingTasks()
+    {
+        pendingTasks = await DbContext.Tasks
+            .Where(t => !t.IsApproved)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+
+        StateHasChanged();
+    }
+
+    private async Task Approve(TaskItem task)
+    {
+        string? accountId = task.JiraAccountId;
+
+        if (accountId == null && !string.IsNullOrWhiteSpace(task.AssigneeName))
+        {
+            accountId = await Jira.FindUserAccountIdAsync(task.AssigneeName);
+            task.JiraAccountId = accountId;
+        }
+
+        var summary = task.Description.Length > 80
+            ? task.Description.Substring(0, 77) + "..."
+            : task.Description;
+
+        var success = await Jira.CreateIssueAsync(
+            summary,
+            task.Description,
+            task.CreatedAt,
+            task.Deadline,
+            task.Priority,
+            accountId
+        );
+
+        if (!success)
+            return;
+
+        task.IsApproved = true;
+        await DbContext.SaveChangesAsync();
+        await LoadPendingTasks();
+    }
+
+    private async Task Delete(TaskItem task)
+    {
+        DbContext.Tasks.Remove(task);
+        await DbContext.SaveChangesAsync();
+        await LoadPendingTasks();
+    }
+}

@@ -7,58 +7,75 @@
 @inject AppDbContext DbContext
 @rendermode InteractiveServer
 
-        @if (pendingTasks != null && pendingTasks.Any())
+
+<div class="filter-bar card" style="margin-bottom: 20px; padding: 15px; display: flex; align-items: center; gap: 15px;">
+    <i class="oi oi-filter"></i>
+    <strong>Filter by Project/Document:</strong>
+
+    <select class="modern-input" @onchange="OnProjectFilterChanged" style="width: 300px;">
+        <option value="0">--- All Documents ---</option>
+        @foreach (var doc in availableDocuments)
         {
-            <div class="card full-width">
-                <h5>Pending Task Approval</h5>
-
-                <div class="table-responsive">
-                    <table class="modern-table">
-                        <thead>
-                            <tr>
-                                <th>Description</th>
-                                <th>Assignee (Jira)</th>
-                                <th>Deadline</th>
-                                <th>Priority</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var task in pendingTasks)
-                            {
-                                <tr>
-                                    <td style="width:600px"><input class="modern-input" @bind="task.Description" /></td>
-                                    <td>
-                                        <select class="modern-input" @onchange="(e) => OnAssigneeChanged(task, e.Value?.ToString())">
-                                            <option value="">-- User --</option>
-                                            @foreach (var user in jiraUsers)
-                                            {
-                                                <option value="@user.accountId" selected="@(task.JiraAccountId == user.accountId)">
-                                                    @user.displayName
-                                                </option>
-                                            }
-                                        </select>
-                                    </td>
-
-                                    <td><input type="date" class="modern-input" @bind="task.Deadline" /></td>
-                                    <td>
-                                        <select class="modern-input" @bind="task.Priority" style="width:80px">
-                                            <option value="High">High</option>
-                                            <option value="Medium">Medium</option>
-                                            <option value="Low">Low</option>
-                                        </select>
-                                    </td>
-                                    <td class="actions">
-                                        <button class="btn-success" @onclick="() => Approve(task)">&#10004;</button>
-                                        <button class="btn-danger" @onclick="() => Delete(task)">&#10008;</button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <option value="@doc.Id">@doc.Title (@doc.UploadedAt.ToShortDateString())</option>
         }
+    </select>
+
+    <span class="badge bg-primary">Total: @filteredTasks.Count</span>
+</div>
+
+
+@if (filteredTasks != null && filteredTasks.Any())
+{
+    <div class="card full-width">
+        <h5>Pending Task Approval</h5>
+
+        <div class="table-responsive">
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Assignee (Jira)</th>
+                        <th>Deadline</th>
+                        <th>Priority</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var task in filteredTasks)
+                    {
+                        <tr>
+                            <td style="width:600px"><input class="modern-input" @bind="task.Description" /></td>
+                            <td>
+                                <select class="modern-input" @onchange="(e) => OnAssigneeChanged(task, e.Value?.ToString())">
+                                    <option value="">-- User --</option>
+                                    @foreach (var user in jiraUsers)
+                                    {
+                                        <option value="@user.accountId" selected="@(task.JiraAccountId == user.accountId)">
+                                            @user.displayName
+                                        </option>
+                                    }
+                                </select>
+                            </td>
+
+                            <td><input type="date" class="modern-input" @bind="task.Deadline" /></td>
+                            <td>
+                                <select class="modern-input" @bind="task.Priority" style="width:80px">
+                                    <option value="High">High</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Low">Low</option>
+                                </select>
+                            </td>
+                            <td class="actions">
+                                <button class="btn-success" @onclick="() => Approve(task)">&#10004;</button>
+                                <button class="btn-danger" @onclick="() => Delete(task)">&#10008;</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
 
 
 @code {
@@ -70,6 +87,52 @@
 
     private List<TaskItem> pendingTasks = new();
     private List<JiraService.JiraUser> jiraUsers = new();
+
+
+    private List<TaskItem> allTasks = new(); // Всички задачи от БД
+    private List<MeetingDocument> availableDocuments = new(); // Списък с документи
+    private int selectedDocId = 0; // 0 означава "Всички"
+
+    // Това е списъкът, който реално се показва в таблицата
+    private List<TaskItem> filteredTasks => selectedDocId == 0
+        ? allTasks
+        : allTasks.Where(t => t.MeetingDocumentId == selectedDocId).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        // Зареждаме потребителите за Jira Dropdown-а
+        jiraUsers = await Jira.GetAllUsersAsync();
+    }
+
+    private async Task LoadData()
+    {
+        using var scope = ServiceScopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // Зареждаме задачите + свързаните документи
+        allTasks = await db.Tasks
+            .Include(t => t.Document)
+            .Where(t => !t.IsApproved)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+
+        // Вземаме уникалните документи, които имат неодобрени задачи
+        availableDocuments = allTasks
+            .Select(t => t.Document)
+            .Where(d => d != null)
+            .DistinctBy(d => d.Id)
+            .ToList()!;
+    }
+
+    private void OnProjectFilterChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int id))
+        {
+            selectedDocId = id;
+        }
+    }
+
 
     private void OnAssigneeChanged(TaskItem task, string? accountId)
     {

@@ -1,0 +1,89 @@
+﻿@page "/callback"
+@using Microsoft.AspNetCore.WebUtilities
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+@inject IHttpClientFactory ClientFactory
+
+<div class="callback-container">
+    @if (isProcessing)
+    {
+        <div class="loader"></div>
+        <p>Connecting your Jira account...</p>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p class="error">Error: @errorMessage</p>
+        <button @onclick='() => NavigationManager.NavigateTo("/login")'>Try Again</button>
+    }
+</div>
+
+@code {
+    private bool isProcessing = true;
+    private string errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+
+        // 1. Extract the 'code' from the URL query string
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("code", out var code))
+        {
+            await ExchangeCodeForToken(code);
+        }
+        else
+        {
+            errorMessage = "No authorization code found.";
+            isProcessing = false;
+        }
+    }
+
+    private async Task ExchangeCodeForToken(string code)
+    {
+        try
+        {
+            // Note: In a real app, do this exchange in a SERVER-SIDE API
+            // to keep your ClientSecret hidden!
+
+            var payload = new
+            {
+                grant_type = "authorization_code",
+                client_id = "z69UAeOplPI4lgyEeo44DxLuANcQ8Ftf",
+                client_secret = "ATOAB6DfUpKzPuLRoDxSi86pQt15Pq-LKiO7ICYxPidxpv3wR8W8jLcsIotoJ5ZqD59s463C97A0",
+                code = code,
+                redirect_uri = "https://localhost:44391/callback"
+            };
+
+            var response = await Http.PostAsJsonAsync("https://auth.atlassian.com/oauth/token", payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var tokenData = await response.Content.ReadFromJsonAsync<JiraTokenResponse>();
+                // Now you have the Access Token!
+                // Next step: Call https://api.atlassian.com/me to get the email.
+                NavigationManager.NavigateTo("/setup-qr-code");
+            }
+            else
+            {
+                errorMessage = "Failed to exchange code for token.";
+            }
+        }
+        catch (NavigationException)
+        {
+            // Do nothing! This is a "good" exception that Blazor uses to redirect.
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // This is where real errors (network, logic) are handled
+            errorMessage = ex.Message;
+        }
+        finally { isProcessing = false; }
+    }
+
+    public class JiraTokenResponse
+    {
+        public string access_token { get; set; }
+        public string refresh_token { get; set; }
+        public int expires_in { get; set; }
+    }
+}

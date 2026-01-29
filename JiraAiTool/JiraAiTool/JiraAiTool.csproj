@@ -19,6 +19,7 @@
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="OllamaSharp" Version="5.4.12" />
     <PackageReference Include="PdfPig" Version="0.1.9" />
+    <PackageReference Include="QRCoder" Version="1.7.0" />
     <PackageReference Include="Whisper.net" Version="1.9.0" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.0" />
   </ItemGroup>

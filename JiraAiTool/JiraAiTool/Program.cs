@@ -18,6 +18,11 @@ builder.Services.AddScoped<OllamaService>();
 builder.Services.AddScoped<JiraService>();
 builder.Services.AddScoped<FileProcessingService>();
 
+builder.Services.AddHttpClient("Atlassian", client =>
+{
+    client.BaseAddress = new Uri("https://auth.atlassian.com/");
+});
+
 builder.Services.AddServerSideBlazor()
     .AddCircuitOptions(options =>
     {

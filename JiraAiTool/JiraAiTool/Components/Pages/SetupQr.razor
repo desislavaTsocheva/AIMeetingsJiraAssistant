@@ -1,0 +1,240 @@
+﻿@page "/setup-qr-code"
+@using JiraAiTool.Components.Layout
+@using QRCoder
+@using System.IO
+@rendermode InteractiveServer
+@inject NavigationManager NavigationManager
+@layout AuthLayout
+
+<div class="setup-container">
+    <div class="setup-card">
+        <div class="header">
+            <div class="ai-icon">AI</div>
+            <h2>Step 2: Connect Jira API</h2>
+        </div>
+
+        <p class="subtitle">To manage your tasks, the assistant needs a secure API token. Scan the code to create one instantly.</p>
+
+        <div class="instruction-box">
+            <div class="qr-image-wrapper">
+                @if (!string.IsNullOrEmpty(qrCodeImageSrc))
+                {
+                    <img src="@qrCodeImageSrc" alt="Scan to create token" />
+                }
+                else
+                {
+                    <div class="loader-placeholder">
+                        <p>Generating QR...</p>
+                    </div>
+                }
+            </div>
+            <div class="steps-text">
+                <ol>
+                    <li>Scan with your phone (or click the code).</li>
+                    <li>Click <b>Create API token</b> in Jira.</li>
+                    <li>Label it "Assistant" and <b>Copy</b> it.</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="token">Paste your API Token</label>
+            <input type="password" id="token" @bind="apiToken" placeholder="ATATT..." />
+            <button class="save-btn" @onclick="SaveToken" disabled="@(string.IsNullOrEmpty(apiToken))">
+                Complete Setup
+            </button>
+        </div>
+
+        <p class="security-note">
+            <svg style="width:12px;height:12px" viewBox="0 0 24 24"><path fill="currentColor" d="M12,17A2,2 0 0,0 14,15C14,13.89 13.11,13 12,13A2,2 0 0,0 10,15C10,16.11 10.89,17 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z" /></svg>
+            Your token is encrypted and stored securely.
+        </p>
+    </div>
+</div>
+
+@code {
+    private string qrCodeImageSrc;
+    private string apiToken;
+
+    protected override void OnInitialized()
+    {
+        // The URL for Jira API Token Management
+        string jiraUrl = "https://id.atlassian.com/manage-profile/security/api-tokens";
+        GenerateQrCode(jiraUrl);
+    }
+
+    private void GenerateQrCode(string url)
+    {
+        try
+        {
+            using QRCodeGenerator qrGenerator = new QRCodeGenerator();
+            using QRCodeData qrCodeData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
+
+            // PngByteQRCode works best for Blazor Server/Cross-platform
+            using PngByteQRCode qrCode = new PngByteQRCode(qrCodeData);
+            byte[] qrAsBytes = qrCode.GetGraphic(20);
+
+            qrCodeImageSrc = $"data:image/png;base64,{Convert.ToBase64String(qrAsBytes)}";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"QR Generation Error: {ex.Message}");
+        }
+    }
+
+    private async Task SaveToken()
+    {
+        // TODO: Send apiToken to your backend service to be encrypted/saved
+        Console.WriteLine("Token Saved Successfully");
+
+        // Redirect to dashboard or home
+        NavigationManager.NavigateTo("/");
+    }
+}
+
+<style>
+    .setup-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f4f5f7;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .setup-card {
+        background: white;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(9, 30, 66, 0.15);
+        max-width: 450px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .header {
+        margin-bottom: 20px;
+    }
+
+    .ai-icon {
+        background: #0052CC;
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin: 0 auto 10px;
+    }
+
+    h2 {
+        color: #172B4D;
+        margin: 0;
+        font-size: 1.4rem;
+    }
+
+    .subtitle {
+        color: #5E6C84;
+        font-size: 0.9rem;
+        margin-top: 10px;
+        line-height: 1.4;
+    }
+
+    .instruction-box {
+        background: #FAFBFC;
+        border: 1px solid #DFE1E6;
+        border-radius: 6px;
+        padding: 20px;
+        margin: 24px 0;
+    }
+
+    .qr-image-wrapper {
+        background: white;
+        padding: 8px;
+        border: 1px solid #DFE1E6;
+        border-radius: 4px;
+        display: inline-block;
+        margin-bottom: 15px;
+    }
+
+        .qr-image-wrapper img {
+            width: 160px;
+            height: 160px;
+            display: block;
+            cursor: pointer;
+        }
+
+    .steps-text {
+        text-align: left;
+        font-size: 0.85rem;
+        color: #42526E;
+    }
+
+        .steps-text ol {
+            padding-left: 20px;
+            margin: 0;
+        }
+
+        .steps-text li {
+            margin-bottom: 5px;
+        }
+
+    .input-group {
+        display: flex;
+        flex-direction: column;
+        text-align: left;
+        gap: 8px;
+    }
+
+    label {
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: #42526E;
+    }
+
+    input {
+        padding: 10px;
+        border: 2px solid #DFE1E6;
+        border-radius: 4px;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+
+        input:focus {
+            border-color: #0052CC;
+        }
+
+    .save-btn {
+        background: #0052CC;
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 4px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+
+        .save-btn:hover:not(:disabled) {
+            background: #0747A6;
+        }
+
+        .save-btn:disabled {
+            background: #ebecf0;
+            color: #a5adba;
+            cursor: not-allowed;
+        }
+
+    .security-note {
+        font-size: 0.75rem;
+        color: #8993A4;
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+</style>

@@ -12,10 +12,7 @@
 
         <h1>Jira AI Assistant</h1>
         <p>Log in to sync your tasks and start optimizing your workflow.</p>
-
-        @* This button calls the C# method to redirect *@
         <button class="jira-btn" @onclick="RedirectToJira">
-            <img src="https://vignette.wikia.nocookie.net/logopedia/images/4/40/Jira_Software_2017.svg" alt="Jira" />
             Continue with Atlassian
         </button>
 
@@ -27,10 +24,10 @@
     private void RedirectToJira()
     {
         var clientId = "z69UAeOplPI4lgyEeo44DxLuANcQ8Ftf";
-        var redirectUri = "https://localhost:44391/callback"; // Your Blazor callback route
+        var redirectUri = "https://localhost:44391/callback"; 
         var scopeList = "read:me read:jira-user read:jira-work write:jira-work offline_access";
         var scopes = Uri.EscapeDataString(scopeList);
-        var state = Guid.NewGuid().ToString(); // Good for security
+        var state = Guid.NewGuid().ToString(); 
 
         var authUrl = $"https://auth.atlassian.com/authorize?" +
                       $"audience=api.atlassian.com&" +
@@ -44,78 +41,3 @@
         NavigationManager.NavigateTo(authUrl);
     }
 }
-
-<style>
-    .login-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        background-color: #f4f5f7;
-    }
-
-    .login-card {
-        background: white;
-        padding: 2.5rem;
-        border-radius: 12px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        text-align: center;
-        max-width: 400px;
-    }
-
-    .ai-badge {
-        background: #0052CC;
-        color: white;
-        width: 50px;
-        height: 50px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 1.5rem;
-        font-weight: bold;
-    }
-
-    h1 {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-        color: #172B4D;
-    }
-
-    p {
-        color: #5E6C84;
-        margin-bottom: 2rem;
-        font-size: 0.9rem;
-    }
-
-    .jira-btn {
-        background: #0052CC;
-        color: white;
-        border: none;
-        padding: 0.8rem 1.5rem;
-        border-radius: 5px;
-        font-weight: 600;
-        width: 100%;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        transition: background 0.2s;
-    }
-
-        .jira-btn:hover {
-            background: #0747A6;
-        }
-
-        .jira-btn img {
-            width: 20px;
-            filter: brightness(0) invert(1);
-        }
-
-    .footer-text {
-        font-size: 0.7rem;
-        color: #a1a1a1;
-        margin-top: 1.5rem;
-    }
-</style>

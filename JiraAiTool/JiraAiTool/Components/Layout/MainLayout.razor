@@ -8,7 +8,6 @@
             <NavMenu />
         </div>
     }
-
     <main>
         <article class="content px-4">
             @Body
@@ -30,7 +29,6 @@
 
     protected override void OnInitialized()
     {
-        // Force UI update when URL changes
         Nav.LocationChanged += (s, e) => StateHasChanged();
     }
 }

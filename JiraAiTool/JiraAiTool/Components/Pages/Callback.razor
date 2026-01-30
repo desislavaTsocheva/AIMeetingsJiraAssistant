@@ -25,7 +25,6 @@
     {
         var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
 
-        // 1. Extract the 'code' from the URL query string
         if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("code", out var code))
         {
             await ExchangeCodeForToken(code);
@@ -41,9 +40,6 @@
     {
         try
         {
-            // Note: In a real app, do this exchange in a SERVER-SIDE API
-            // to keep your ClientSecret hidden!
-
             var payload = new
             {
                 grant_type = "authorization_code",
@@ -58,8 +54,6 @@
             if (response.IsSuccessStatusCode)
             {
                 var tokenData = await response.Content.ReadFromJsonAsync<JiraTokenResponse>();
-                // Now you have the Access Token!
-                // Next step: Call https://api.atlassian.com/me to get the email.
                 NavigationManager.NavigateTo("/setup-qr-code");
             }
             else
@@ -69,12 +63,10 @@
         }
         catch (NavigationException)
         {
-            // Do nothing! This is a "good" exception that Blazor uses to redirect.
             throw;
         }
         catch (Exception ex)
         {
-            // This is where real errors (network, logic) are handled
             errorMessage = ex.Message;
         }
         finally { isProcessing = false; }

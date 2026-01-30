@@ -1,7 +1,6 @@
-/* Основен контейнер на заглавието */
 .top-row {
     height: 3.5rem;
-    background-color: #1a1a2e; /* Тъмно синьо/модерно */
+    background-color: #1a1a2e; 
     display: flex;
     align-items: center;
     border-bottom: 1px solid rgba(255,255,255,0.1);
@@ -18,7 +17,6 @@
     margin-right: 8px;
 }
 
-/* Скриваме чекбокса, но запазваме функционалността му */
 .navbar-toggler {
     appearance: none;
     cursor: pointer;
@@ -37,14 +35,12 @@
         background-color: rgba(255, 255, 255, 0.2);
     }
 
-/* Sidebar фон */
 .nav-scrollable {
     display: none;
-    background-color: #1a1a2e; /* Същия цвят като top-row */
+    background-color: #1a1a2e; 
     padding-top: 0.5rem;
 }
 
-/* Стил на линковете */
 .nav-item {
     padding: 0.25rem 0.75rem;
 }
@@ -52,7 +48,7 @@
     .nav-item ::deep .nav-link {
         color: #a2a2c2;
         background: transparent;
-        border-radius: 12px; /* Модерни заоблени ъгли */
+        border-radius: 12px;
         height: 2.8rem;
         display: flex;
         align-items: center;
@@ -61,21 +57,17 @@
         margin: 2px 0;
     }
 
-        /* Ефект при посочване (Hover) */
         .nav-item ::deep .nav-link:hover {
             background-color: rgba(255, 255, 255, 0.08);
             color: #ffffff;
-            transform: translateX(5px); /* Леко отместване за динамика */
+            transform: translateX(5px);
         }
-
-    /* Активен бутон */
     .nav-item ::deep a.active {
-        background: linear-gradient(90deg, #4e73df 0%, #224abe 100%); /* Градиент за акцент */
+        background: linear-gradient(90deg, #4e73df 0%, #224abe 100%); 
         color: white !important;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     }
 
-/* Икони */
 .bi {
     width: 1.25rem;
     height: 1.25rem;
@@ -87,7 +79,6 @@
     filter: brightness(1);
 }
 
-/* Поведение при десктоп */
 @media (min-width: 641px) {
     .navbar-toggler {
         display: none;

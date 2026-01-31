@@ -8,31 +8,31 @@
 @inject UserSession Session
 @inject AppDbContext Db
 @inject NavigationManager Nav
+@inject AtlassianAuthService AuthService
 
 <div style="max-width: 400px; margin: auto; text-align: center; padding: 2rem;">
     <h2>Step 2: Jira Security</h2>
-    <p>To access your tasks, we need a Jira API Token.</p>
 
     @if (!string.IsNullOrEmpty(qrCodeImageSrc))
     {
         <img src="@qrCodeImageSrc" style="width: 200px; margin-bottom: 1rem;" />
-        <br />
-        <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">Click here to create a token</a>
     }
 
     <div style="text-align: left; margin-top: 1.5rem;">
-        <label><b>Jira Login Email</b></label>
-        <input type="email" @bind="email" class="form-control" style="width: 100%; margin-bottom: 1rem;" placeholder="you@company.com" />
+        <label>Jira Login Email</label>
+        <input type="email" @bind="email" class="form-control" style="width: 100%; margin-bottom: 1rem;" />
 
-        <label><b>API Token</b></label>
-        <input type="password" @bind="apiToken" class="form-control" style="width: 100%; margin-bottom: 1rem;" placeholder="ATATT..." />
+        <label>API Token</label>
+        <input type="password" @bind="apiToken" class="form-control" style="width: 100%; margin-bottom: 1rem;" />
 
-        <button @onclick="Save" class="btn btn-primary" style="width: 100%; padding: 0.8rem;">Complete Setup</button>
+        <button @onclick="Save" class="btn btn-primary" style="width: 100%; padding: 0.8rem;">
+            Complete Setup
+        </button>
     </div>
 
     @if (!string.IsNullOrEmpty(error))
     {
-        <div style="color: red; margin-top: 1rem;">@error</div>
+        <div class="alert alert-danger" style="margin-top: 1rem;">@error</div>
     }
 </div>
 
@@ -45,44 +45,43 @@
     protected override void OnInitialized()
     {
         email = GetQueryParam("email") ?? Session.Email ?? "";
-
         GenerateQrCode("https://id.atlassian.com/manage-profile/security/api-tokens");
     }
 
     private string? GetQueryParam(string key)
     {
         var uri = Nav.ToAbsoluteUri(Nav.Uri);
-        return QueryHelpers.ParseQuery(uri.Query).TryGetValue(key, out var value) ? value.ToString() : null;
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        return query.TryGetValue(key, out var value) ? value.ToString() : null;
     }
 
     async Task Save()
     {
-        if (string.IsNullOrEmpty(apiToken) || string.IsNullOrEmpty(email))
-        {
-            error = "Both Email and Token are required.";
-            return;
-        }
-
-        var accountId = GetQueryParam("accountId") ?? Session.JiraAccountId;
-
-        if (string.IsNullOrEmpty(accountId))
-        {
-            error = "User identity not found. Please log in again via the main page.";
-            return;
-        }
-
         try
         {
-            var user = await Db.Users.FirstOrDefaultAsync(u => u.JiraAccountId == accountId);
-
-            if (user == null)
+            error = null;
+            if (string.IsNullOrEmpty(apiToken) || string.IsNullOrEmpty(email))
             {
-                error = "Session expired. No matching user record found.";
+                error = "Please fill in all fields.";
                 return;
             }
 
-            user.ApiToken = apiToken;
-            user.Email = email; 
+            var accountId = GetQueryParam("accountId") ?? Session.JiraAccountId;
+            if (string.IsNullOrEmpty(accountId))
+            {
+                error = "No Account ID found. Please go back to login.";
+                return;
+            }
+
+            var user = await Db.Users.FirstOrDefaultAsync(u => u.JiraAccountId == accountId);
+            if (user == null)
+            {
+                error = "User not found in database. Try logging in again.";
+                return;
+            }
+
+            user.ApiToken = AuthService.ProtectToken(apiToken);
+            user.Email = email;
 
             var urlBaseUrl = GetQueryParam("url");
             if (!string.IsNullOrEmpty(urlBaseUrl)) user.BaseUrl = urlBaseUrl;
@@ -98,7 +97,8 @@
         }
         catch (Exception ex)
         {
-            error = $"Save failed: {ex.Message}";
+            error = $"Save error: {ex.Message}";
+            Console.WriteLine($"Critical Save Error: {ex}");
         }
     }
 
@@ -109,8 +109,7 @@
             using QRCodeGenerator qrGenerator = new QRCodeGenerator();
             using QRCodeData qrCodeData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
             using PngByteQRCode qrCode = new PngByteQRCode(qrCodeData);
-            byte[] qrAsBytes = qrCode.GetGraphic(20);
-            qrCodeImageSrc = $"data:image/png;base64,{Convert.ToBase64String(qrAsBytes)}";
+            qrCodeImageSrc = $"data:image/png;base64,{Convert.ToBase64String(qrCode.GetGraphic(20))}";
         }
         catch { }
     }

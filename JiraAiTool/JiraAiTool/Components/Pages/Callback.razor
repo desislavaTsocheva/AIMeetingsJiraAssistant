@@ -51,47 +51,33 @@
 
         try
         {
-            // 1. Exchange Code for Token via Service
             var tokenData = await AuthService.ExchangeCodeAsync(code);
-
             var client = ClientFactory.CreateClient();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenData.access_token);
 
-            // 2. Get Site and User Info
             var sites = await client.GetFromJsonAsync<List<AtlassianSite>>("https://api.atlassian.com/oauth/token/accessible-resources");
             var me = await client.GetFromJsonAsync<AtlassianMe>("https://api.atlassian.com/me");
 
-            if (sites == null || !sites.Any() || me == null)
-                throw new Exception("Could not retrieve Atlassian site or profile information.");
+            if (sites == null || !sites.Any() || me == null) throw new Exception("Atlassian data retrieval failed");
 
             var site = sites.First();
             accountId = me.account_id;
             email = me.email ?? "";
             siteUrl = site.url;
 
-            // 3. Persist "Parked" User to DB
             var user = await Db.Users.FirstOrDefaultAsync(u => u.JiraAccountId == accountId);
             if (user == null)
             {
-                user = new User
-                {
-                    JiraAccountId = accountId,
-                    CreatedAt = DateTime.UtcNow,
-                    Email = email,
-                    ApiToken = "" // Placeholder until next step
-                };
+                user = new User { JiraAccountId = accountId, CreatedAt = DateTime.UtcNow, Email = email, ApiToken = "" };
                 Db.Users.Add(user);
             }
-
             user.BaseUrl = siteUrl;
             user.Email = email;
             await Db.SaveChangesAsync();
 
-            // 4. Sync Session
             Session.JiraAccountId = accountId;
             Session.BaseUrl = siteUrl;
             Session.Email = email;
-
             isProcessing = false;
         }
         catch (Exception ex)
@@ -101,12 +87,7 @@
             return;
         }
 
-        // 5. Navigate outside the try-catch to avoid NavigationException errors
-        if (!string.IsNullOrEmpty(accountId))
-        {
-            var target = $"/setup-qr-code?email={Uri.EscapeDataString(email ?? "")}&url={Uri.EscapeDataString(siteUrl ?? "")}&accountId={accountId}";
-            Nav.NavigateTo(target);
-        }
+        Nav.NavigateTo($"/setup-qr-code?email={Uri.EscapeDataString(email ?? "")}&url={Uri.EscapeDataString(siteUrl ?? "")}&accountId={accountId}");
     }
 
     public record AtlassianSite(string id, string url);

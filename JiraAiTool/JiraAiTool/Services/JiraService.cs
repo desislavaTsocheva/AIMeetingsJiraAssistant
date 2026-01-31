@@ -9,39 +9,29 @@ public class JiraService
     private readonly IHttpClientFactory _factory;
     private readonly UserSession _session;
     private readonly string _projectKey;
+    private readonly AtlassianAuthService _authService;
 
-    public JiraService(
-        IHttpClientFactory factory,
-        UserSession session,
-        IConfiguration config)
+    public JiraService(IHttpClientFactory factory, UserSession session, AtlassianAuthService authService, IConfiguration config)
     {
         _factory = factory;
         _session = session;
+        _authService = authService;
         _projectKey = config["JiraSettings:ProjectKey"] ?? "KAN";
     }
 
     private HttpClient CreateClient()
     {
-        if (string.IsNullOrEmpty(_session.Email) ||
-            string.IsNullOrEmpty(_session.ApiToken) ||
-            string.IsNullOrEmpty(_session.BaseUrl))
+        if (string.IsNullOrEmpty(_session.Email) || string.IsNullOrEmpty(_session.ApiToken) || string.IsNullOrEmpty(_session.BaseUrl))
         {
             throw new InvalidOperationException("Jira session is incomplete");
         }
 
         var client = _factory.CreateClient();
+        var decryptedToken = _authService.UnprotectToken(_session.ApiToken);
+        var authToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_session.Email}:{decryptedToken}"));
 
-        var authToken = Convert.ToBase64String(
-            Encoding.UTF8.GetBytes($"{_session.Email}:{_session.ApiToken}")
-        );
-
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Basic", authToken);
-
-        client.DefaultRequestHeaders.Accept.Add(
-            new MediaTypeWithQualityHeaderValue("application/json")
-        );
-
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         client.BaseAddress = new Uri(_session.BaseUrl);
 
         return client;
@@ -50,51 +40,27 @@ public class JiraService
     public async Task<string?> FindUserAccountIdAsync(string name)
     {
         using var client = CreateClient();
-
-        var response = await client.GetAsync(
-            $"/rest/api/3/user/search?query={Uri.EscapeDataString(name)}"
-        );
-
-        if (!response.IsSuccessStatusCode)
-            return null;
+        var response = await client.GetAsync($"/rest/api/3/user/search?query={Uri.EscapeDataString(name)}");
+        if (!response.IsSuccessStatusCode) return null;
 
         var json = await response.Content.ReadAsStringAsync();
-        var users = JsonSerializer.Deserialize<List<JiraUser>>(
-            json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-        );
-
+        var users = JsonSerializer.Deserialize<List<JiraUser>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         return users?.FirstOrDefault()?.accountId;
     }
 
     public async Task<List<JiraUser>> GetAllUsersAsync()
     {
         using var client = CreateClient();
-
-        var response = await client.GetAsync(
-            "/rest/api/3/users/search?query=.&maxResults=1000"
-        );
-
-        if (!response.IsSuccessStatusCode)
-            return new();
+        var response = await client.GetAsync("/rest/api/3/users/search?query=.&maxResults=1000");
+        if (!response.IsSuccessStatusCode) return new();
 
         var json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<List<JiraUser>>(
-            json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-        ) ?? new();
+        return JsonSerializer.Deserialize<List<JiraUser>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
     }
 
-    public async Task<bool> CreateIssueAsync(
-        string summary,
-        string description,
-        DateTime? startDate,
-        DateTime? endDate,
-        string priorityName,
-        string? assigneeId = null)
+    public async Task<bool> CreateIssueAsync(string summary, string description, DateTime? startDate, DateTime? endDate, string priorityName, string? assigneeId = null)
     {
         using var client = CreateClient();
-
         var payload = new
         {
             fields = new
@@ -104,33 +70,20 @@ public class JiraService
                 priority = new { name = priorityName },
                 issuetype = new { name = "Task" },
                 duedate = endDate?.ToString("yyyy-MM-dd"),
-                assignee = assigneeId != null
-                    ? new { accountId = assigneeId }
-                    : null,
+                assignee = assigneeId != null ? new { accountId = assigneeId } : null,
                 description = new
                 {
                     type = "doc",
                     version = 1,
                     content = new[]
                     {
-                        new
-                        {
-                            type = "paragraph",
-                            content = new[]
-                            {
-                                new { type = "text", text = description }
-                            }
-                        }
+                        new { type = "paragraph", content = new[] { new { type = "text", text = description } } }
                     }
                 }
             }
         };
 
-        var response = await client.PostAsJsonAsync(
-            "/rest/api/3/issue",
-            payload
-        );
-
+        var response = await client.PostAsJsonAsync("/rest/api/3/issue", payload);
         return response.IsSuccessStatusCode;
     }
 

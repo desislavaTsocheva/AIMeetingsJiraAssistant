@@ -1,23 +1,19 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using UglyToad.PdfPig.Tokens;
 
 namespace JiraAiTool.Services;
 
 public class UserSession
 {
-    public string? Email { get; set; }       
+    public string? Email { get; set; }
     public string? ApiToken { get; set; }
     public string? BaseUrl { get; set; }
     public string? JiraAccountId { get; set; }
 
-    public bool IsReady =>
-        !string.IsNullOrEmpty(Email) &&
-        !string.IsNullOrEmpty(ApiToken) &&
-        !string.IsNullOrEmpty(BaseUrl);
+    public bool IsReady => !string.IsNullOrEmpty(Email) && !string.IsNullOrEmpty(ApiToken) && !string.IsNullOrEmpty(BaseUrl);
 
     public async Task<bool> LoadUserFromDb(AppDbContext db)
     {
-        var user = await db.Users.FirstOrDefaultAsync();
+        var user = await db.Users.OrderByDescending(u => u.CreatedAt).FirstOrDefaultAsync();
         if (user == null) return false;
 
         Email = user.Email;
@@ -27,5 +23,4 @@ public class UserSession
 
         return true;
     }
-
 }

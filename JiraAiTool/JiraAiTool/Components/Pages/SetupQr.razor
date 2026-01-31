@@ -1,65 +1,105 @@
 ﻿@page "/setup-qr-code"
-@using JiraAiTool.Components.Layout
+@using JiraAiTool.Models
+@using JiraAiTool.Services
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.EntityFrameworkCore
 @using QRCoder
-@using System.IO
 @rendermode InteractiveServer
-@inject NavigationManager NavigationManager
-@layout AuthLayout
+@inject UserSession Session
+@inject AppDbContext Db
+@inject NavigationManager Nav
 
-<div class="setup-container">
-    <div class="setup-card">
-        <div class="header">
-            <div class="ai-icon">AI</div>
-            <h2>Step 2: Connect Jira API</h2>
-        </div>
+<div style="max-width: 400px; margin: auto; text-align: center; padding: 2rem;">
+    <h2>Step 2: Jira Security</h2>
+    <p>To access your tasks, we need a Jira API Token.</p>
 
-        <p class="subtitle">To manage your tasks, the assistant needs a secure API token. Scan the code to create one instantly.</p>
+    @if (!string.IsNullOrEmpty(qrCodeImageSrc))
+    {
+        <img src="@qrCodeImageSrc" style="width: 200px; margin-bottom: 1rem;" />
+        <br />
+        <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">Click here to create a token</a>
+    }
 
-        <div class="instruction-box">
-            <div class="qr-image-wrapper">
-                @if (!string.IsNullOrEmpty(qrCodeImageSrc))
-                {
-                    <img src="@qrCodeImageSrc" alt="Scan to create token" />
-                }
-                else
-                {
-                    <div class="loader-placeholder">
-                        <p>Generating QR...</p>
-                    </div>
-                }
-            </div>
-            <div class="steps-text">
-                <ol>
-                    <li>Scan with your phone (or click the code).</li>
-                    <li>Click <b>Create API token</b> in Jira.</li>
-                    <li>Label it "Assistant" and <b>Copy</b> it.</li>
-                </ol>
-            </div>
-        </div>
+    <div style="text-align: left; margin-top: 1.5rem;">
+        <label><b>Jira Login Email</b></label>
+        <input type="email" @bind="email" class="form-control" style="width: 100%; margin-bottom: 1rem;" placeholder="you@company.com" />
 
-        <div class="input-group">
-            <label for="token">Paste your API Token</label>
-            <input type="password" id="token" @bind="apiToken" placeholder="ATATT..." />
-            <button class="save-btn" @onclick="SaveToken" disabled="@(string.IsNullOrEmpty(apiToken))">
-                Complete Setup
-            </button>
-        </div>
+        <label><b>API Token</b></label>
+        <input type="password" @bind="apiToken" class="form-control" style="width: 100%; margin-bottom: 1rem;" placeholder="ATATT..." />
 
-        <p class="security-note">
-            <svg style="width:12px;height:12px" viewBox="0 0 24 24"><path fill="currentColor" d="M12,17A2,2 0 0,0 14,15C14,13.89 13.11,13 12,13A2,2 0 0,0 10,15C10,16.11 10.89,17 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z" /></svg>
-            Your token is encrypted and stored securely.
-        </p>
+        <button @onclick="Save" class="btn btn-primary" style="width: 100%; padding: 0.8rem;">Complete Setup</button>
     </div>
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div style="color: red; margin-top: 1rem;">@error</div>
+    }
 </div>
 
 @code {
-    private string qrCodeImageSrc;
-    private string apiToken;
+    string apiToken = "";
+    string email = "";
+    string? error;
+    string qrCodeImageSrc = "";
 
     protected override void OnInitialized()
     {
-        string jiraUrl = "https://id.atlassian.com/manage-profile/security/api-tokens";
-        GenerateQrCode(jiraUrl);
+        email = GetQueryParam("email") ?? Session.Email ?? "";
+
+        GenerateQrCode("https://id.atlassian.com/manage-profile/security/api-tokens");
+    }
+
+    private string? GetQueryParam(string key)
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        return QueryHelpers.ParseQuery(uri.Query).TryGetValue(key, out var value) ? value.ToString() : null;
+    }
+
+    async Task Save()
+    {
+        if (string.IsNullOrEmpty(apiToken) || string.IsNullOrEmpty(email))
+        {
+            error = "Both Email and Token are required.";
+            return;
+        }
+
+        var accountId = GetQueryParam("accountId") ?? Session.JiraAccountId;
+
+        if (string.IsNullOrEmpty(accountId))
+        {
+            error = "User identity not found. Please log in again via the main page.";
+            return;
+        }
+
+        try
+        {
+            var user = await Db.Users.FirstOrDefaultAsync(u => u.JiraAccountId == accountId);
+
+            if (user == null)
+            {
+                error = "Session expired. No matching user record found.";
+                return;
+            }
+
+            user.ApiToken = apiToken;
+            user.Email = email; 
+
+            var urlBaseUrl = GetQueryParam("url");
+            if (!string.IsNullOrEmpty(urlBaseUrl)) user.BaseUrl = urlBaseUrl;
+
+            await Db.SaveChangesAsync();
+
+            Session.ApiToken = user.ApiToken;
+            Session.Email = user.Email;
+            Session.BaseUrl = user.BaseUrl;
+            Session.JiraAccountId = user.JiraAccountId;
+
+            Nav.NavigateTo("/home");
+        }
+        catch (Exception ex)
+        {
+            error = $"Save failed: {ex.Message}";
+        }
     }
 
     private void GenerateQrCode(string url)
@@ -68,21 +108,10 @@
         {
             using QRCodeGenerator qrGenerator = new QRCodeGenerator();
             using QRCodeData qrCodeData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
-
             using PngByteQRCode qrCode = new PngByteQRCode(qrCodeData);
             byte[] qrAsBytes = qrCode.GetGraphic(20);
-
             qrCodeImageSrc = $"data:image/png;base64,{Convert.ToBase64String(qrAsBytes)}";
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"QR Generation Error: {ex.Message}");
-        }
-    }
-
-    private async Task SaveToken()
-    {
-        Console.WriteLine("Token Saved Successfully");
-        NavigationManager.NavigateTo("/");
+        catch { }
     }
 }

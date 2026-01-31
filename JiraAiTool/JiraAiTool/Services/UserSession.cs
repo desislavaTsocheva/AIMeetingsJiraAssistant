@@ -1,9 +1,31 @@
-﻿namespace JiraAiTool.Services
+﻿using Microsoft.EntityFrameworkCore;
+using UglyToad.PdfPig.Tokens;
+
+namespace JiraAiTool.Services;
+
+public class UserSession
 {
-    public class UserSession
+    public string? Email { get; set; }       
+    public string? ApiToken { get; set; }
+    public string? BaseUrl { get; set; }
+    public string? JiraAccountId { get; set; }
+
+    public bool IsReady =>
+        !string.IsNullOrEmpty(Email) &&
+        !string.IsNullOrEmpty(ApiToken) &&
+        !string.IsNullOrEmpty(BaseUrl);
+
+    public async Task<bool> LoadUserFromDb(AppDbContext db)
     {
-        public string Email { get; set; }
-        public string ApiToken { get; set; }
-        public bool IsAuthenticated => !string.IsNullOrEmpty(ApiToken);
+        var user = await db.Users.FirstOrDefaultAsync();
+        if (user == null) return false;
+
+        Email = user.Email;
+        ApiToken = user.ApiToken;
+        BaseUrl = user.BaseUrl;
+        JiraAccountId = user.JiraAccountId;
+
+        return true;
     }
+
 }

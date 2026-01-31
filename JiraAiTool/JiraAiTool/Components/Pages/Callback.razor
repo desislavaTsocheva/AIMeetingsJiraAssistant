@@ -1,8 +1,14 @@
 ﻿@page "/callback"
+@using JiraAiTool.Services
+@using JiraAiTool.Models
 @using Microsoft.AspNetCore.WebUtilities
-@inject NavigationManager NavigationManager
-@inject HttpClient Http
+@using Microsoft.EntityFrameworkCore
+@using System.Net.Http.Headers
+@inject NavigationManager Nav
 @inject IHttpClientFactory ClientFactory
+@inject UserSession Session
+@inject AppDbContext Db
+@inject AtlassianAuthService AuthService
 
 <div class="callback-container">
     @if (isProcessing)
@@ -12,70 +18,97 @@
     }
     else if (!string.IsNullOrEmpty(errorMessage))
     {
-        <p class="error">Error: @errorMessage</p>
-        <button @onclick='() => NavigationManager.NavigateTo("/login")'>Try Again</button>
+        <p class="error">@errorMessage</p>
+        <button class="btn btn-primary" @onclick='() => Nav.NavigateTo("/login")'>Try Again</button>
     }
 </div>
 
 @code {
     private bool isProcessing = true;
-    private string errorMessage;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
 
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("code", out var code))
+        if (query.TryGetValue("code", out var code))
         {
-            await ExchangeCodeForToken(code);
+            await ExchangeCodeForToken(code!);
         }
         else
         {
-            errorMessage = "No authorization code found.";
+            errorMessage = "No authorization code received from Atlassian.";
             isProcessing = false;
         }
     }
 
     private async Task ExchangeCodeForToken(string code)
     {
+        string? accountId = null;
+        string? email = null;
+        string? siteUrl = null;
+
         try
         {
-            var payload = new
-            {
-                grant_type = "authorization_code",
-                client_id = "z69UAeOplPI4lgyEeo44DxLuANcQ8Ftf",
-                client_secret = "ATOAB6DfUpKzPuLRoDxSi86pQt15Pq-LKiO7ICYxPidxpv3wR8W8jLcsIotoJ5ZqD59s463C97A0",
-                code = code,
-                redirect_uri = "https://localhost:44391/callback"
-            };
+            // 1. Exchange Code for Token via Service
+            var tokenData = await AuthService.ExchangeCodeAsync(code);
 
-            var response = await Http.PostAsJsonAsync("https://auth.atlassian.com/oauth/token", payload);
+            var client = ClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenData.access_token);
 
-            if (response.IsSuccessStatusCode)
+            // 2. Get Site and User Info
+            var sites = await client.GetFromJsonAsync<List<AtlassianSite>>("https://api.atlassian.com/oauth/token/accessible-resources");
+            var me = await client.GetFromJsonAsync<AtlassianMe>("https://api.atlassian.com/me");
+
+            if (sites == null || !sites.Any() || me == null)
+                throw new Exception("Could not retrieve Atlassian site or profile information.");
+
+            var site = sites.First();
+            accountId = me.account_id;
+            email = me.email ?? "";
+            siteUrl = site.url;
+
+            // 3. Persist "Parked" User to DB
+            var user = await Db.Users.FirstOrDefaultAsync(u => u.JiraAccountId == accountId);
+            if (user == null)
             {
-                var tokenData = await response.Content.ReadFromJsonAsync<JiraTokenResponse>();
-                NavigationManager.NavigateTo("/setup-qr-code");
+                user = new User
+                {
+                    JiraAccountId = accountId,
+                    CreatedAt = DateTime.UtcNow,
+                    Email = email,
+                    ApiToken = "" // Placeholder until next step
+                };
+                Db.Users.Add(user);
             }
-            else
-            {
-                errorMessage = "Failed to exchange code for token.";
-            }
-        }
-        catch (NavigationException)
-        {
-            throw;
+
+            user.BaseUrl = siteUrl;
+            user.Email = email;
+            await Db.SaveChangesAsync();
+
+            // 4. Sync Session
+            Session.JiraAccountId = accountId;
+            Session.BaseUrl = siteUrl;
+            Session.Email = email;
+
+            isProcessing = false;
         }
         catch (Exception ex)
         {
-            errorMessage = ex.Message;
+            errorMessage = $"Authentication failed: {ex.Message}";
+            isProcessing = false;
+            return;
         }
-        finally { isProcessing = false; }
+
+        // 5. Navigate outside the try-catch to avoid NavigationException errors
+        if (!string.IsNullOrEmpty(accountId))
+        {
+            var target = $"/setup-qr-code?email={Uri.EscapeDataString(email ?? "")}&url={Uri.EscapeDataString(siteUrl ?? "")}&accountId={accountId}";
+            Nav.NavigateTo(target);
+        }
     }
 
-    public class JiraTokenResponse
-    {
-        public string access_token { get; set; }
-        public string refresh_token { get; set; }
-        public int expires_in { get; set; }
-    }
+    public record AtlassianSite(string id, string url);
+    public record AtlassianMe(string account_id, string? email);
 }

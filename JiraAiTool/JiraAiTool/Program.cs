@@ -1,5 +1,6 @@
 using JiraAiTool.Components;
 using JiraAiTool.Models;
+using JiraAiTool.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<OllamaService>();
 builder.Services.AddScoped<JiraService>();
 builder.Services.AddScoped<FileProcessingService>();
+builder.Services.AddScoped<UserSession>();
+builder.Services.AddHttpClient<AtlassianAuthService>();
+
 
 builder.Services.AddHttpClient("Atlassian", client =>
 {

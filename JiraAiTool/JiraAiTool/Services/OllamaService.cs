@@ -1,4 +1,5 @@
 ﻿using JiraAiTool.Models;
+using JiraAiTool.Services;
 using OllamaSharp;
 using System.Text.Json;
 

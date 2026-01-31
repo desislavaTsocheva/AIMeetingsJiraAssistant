@@ -1,10 +1,13 @@
 ﻿@page "/tasks"
 @using JiraAiTool.Models
+@using JiraAiTool.Services
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.Forms
 @inject JiraService Jira;
 @inject IServiceScopeFactory ServiceScopeFactory
 @inject AppDbContext DbContext
+@inject UserSession Session
+@inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
 
@@ -102,8 +105,20 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
-        jiraUsers = await Jira.GetAllUsersAsync();
+        // 1. Първо опитай да заредиш данните от базата в сесията
+        bool userLoaded = await Session.LoadUserFromDb(DbContext);
+
+        if (userLoaded && !string.IsNullOrEmpty(Session.BaseUrl))
+        {
+            // Сега JiraService ще има правилен URL
+            jiraUsers = await Jira.GetAllUsersAsync();
+            await LoadData();
+        }
+        else
+        {
+            // Ако няма потребител в базата или липсва URL -> обратно към логин
+            NavigationManager.NavigateTo("/");
+        }
     }
 
     private async Task LoadData()

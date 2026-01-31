@@ -1,11 +1,14 @@
 ﻿@page "/home"
 @using JiraAiTool.Models
+@using JiraAiTool.Services
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.Forms
 @inject JiraService Jira;
 @inject IServiceScopeFactory ServiceScopeFactory
 @inject AppDbContext DbContext
 @rendermode InteractiveServer
+@inject UserSession Session 
+@inject AppDbContext Db
 
 <div class="page-wrapper">
     <div class="header">
@@ -53,6 +56,21 @@
 
     private List<TaskItem> pendingTasks = new();
     private List<JiraService.JiraUser> jiraUsers = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsReady)
+        {
+            var savedUser = await Db.Users.OrderByDescending(u => u.CreatedAt).FirstOrDefaultAsync();
+            if (savedUser != null)
+            {
+                Session.Email = savedUser.Email;
+                Session.ApiToken = savedUser.ApiToken;
+                Session.BaseUrl = savedUser.BaseUrl; 
+                Session.JiraAccountId = savedUser.JiraAccountId; 
+            }
+        }
+    }
 
     private void OnFileSelected(InputFileChangeEventArgs e)
     {

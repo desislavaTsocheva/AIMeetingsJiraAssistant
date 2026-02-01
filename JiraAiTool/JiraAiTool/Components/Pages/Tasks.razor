@@ -105,18 +105,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // 1. Първо опитай да заредиш данните от базата в сесията
         bool userLoaded = await Session.LoadUserFromDb(DbContext);
 
         if (userLoaded && !string.IsNullOrEmpty(Session.BaseUrl))
         {
-            // Сега JiraService ще има правилен URL
             jiraUsers = await Jira.GetAllUsersAsync();
             await LoadData();
         }
         else
         {
-            // Ако няма потребител в базата или липсва URL -> обратно към логин
             NavigationManager.NavigateTo("/");
         }
     }

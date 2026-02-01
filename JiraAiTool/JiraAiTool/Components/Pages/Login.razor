@@ -3,6 +3,7 @@
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 @layout AuthLayout
+@inject IConfiguration Configuration
 
 <div class="login-container">
     <div class="login-card">
@@ -23,8 +24,8 @@
 @code {
     private void RedirectToJira()
     {
-        var clientId = "z69UAeOplPI4lgyEeo44DxLuANcQ8Ftf";
-        var redirectUri = "https://localhost:44391/callback"; 
+        var clientId = Configuration["Atlassian:ClientId"];
+        var redirectUri = "https://localhost:44391/callback";
         var scopeList = "read:me read:jira-user read:jira-work write:jira-work offline_access";
         var scopes = Uri.EscapeDataString(scopeList);
         var state = Guid.NewGuid().ToString(); 

@@ -1,4 +1,4 @@
-# 🚀 Jira AI: Meeting Assistant Manager
+# 🚀 Jira AI: Meeting Assistant Manager- SyncUp
 
 **Jira AI Meeting Assistant** is a privacy-first productivity tool that bridges spoken meeting discussions with actionable project management. Using **local AI (Ollama)** and **speech-to-text (Whisper)**, the app analyzes meeting transcripts to automatically extract action items and sync them directly with **Jira / Atlassian Cloud**.
 

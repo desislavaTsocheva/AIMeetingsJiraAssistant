@@ -1,6 +1,6 @@
 .top-row {
     height: 3.5rem;
-    background-color: #1a1a2e; 
+    background-color: #1a1a2e;
     display: flex;
     align-items: center;
     border-bottom: 1px solid rgba(255,255,255,0.1);
@@ -37,7 +37,7 @@
 
 .nav-scrollable {
     display: none;
-    background-color: #1a1a2e; 
+    background-color: #1a1a2e;
     padding-top: 0.5rem;
 }
 
@@ -62,8 +62,9 @@
             color: #ffffff;
             transform: translateX(5px);
         }
+
     .nav-item ::deep a.active {
-        background: linear-gradient(90deg, #4e73df 0%, #224abe 100%); 
+        background: linear-gradient(90deg, #4e73df 0%, #224abe 100%);
         color: white !important;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     }

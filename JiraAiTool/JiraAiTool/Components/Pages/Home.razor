@@ -10,7 +10,57 @@
 @inject UserSession Session 
 @inject AppDbContext Db
 
-<div class="page-wrapper">
+
+<div class="dashboard-container">
+    <header class="dashboard-header">
+        <div>
+            <h1>SyncUp</h1>
+            <p class="subtitle">Transform meeting transcripts into actionable Jira tasks in seconds.</p>
+        </div>
+    </header>
+
+    <div class="main-grid">
+        <div class="glass-card input-section">
+            <div class="card-header">
+                <i class="bi bi-pencil-square"></i>
+                <h5>Meeting Transcript</h5>
+            </div>
+            <textarea class="custom-textarea"
+                      placeholder="Paste your meeting notes or transcript here..."
+                      @bind="meetingText"
+                      disabled="@isProcessing"></textarea>
+
+            <div class="divider"><span>OR</span></div>
+
+            <div class="file-upload-zone">
+                <i class="bi bi-cloud-arrow-up"></i>
+                <p>Upload meeting audio or documents</p>
+                <InputFile OnChange="OnFileSelected" class="file-input" accept=".pdf,.docx,.mp3,.wav" disabled="@isProcessing" />
+                @if (uploadedFile != null)
+                {
+                    <div class="file-badge">
+                        <i class="bi bi-file-earmark-check"></i> @uploadedFile.Name
+                    </div>
+                }
+            </div>
+
+            <button class="btn-primary-glow" @onclick="Analyze" disabled="@(isProcessing || (string.IsNullOrEmpty(meetingText) && uploadedFile == null))">
+                @if (isProcessing)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Analyzing with AI...</span>
+                }
+                else
+                {
+                    <i class="bi bi-magic"></i>
+                    <span>Generate Jira Tasks</span>
+                }
+            </button>
+        </div>
+    </div>
+</div>
+
+@* <div class="page-wrapper">
     <div class="header">
         <h2>AI Meeting Assistant</h2>
         <p>Extract tasks from meetings and send them to Jira</p>
@@ -44,7 +94,7 @@
             </button>
         </div>
     </div>
-</div>
+</div> *@
 
 
 @code {

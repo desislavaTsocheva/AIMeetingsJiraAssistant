@@ -70,7 +70,7 @@ public class JiraService
                 priority = new { name = priorityName },
                 issuetype = new { name = "Task" },
                 duedate = endDate?.ToString("yyyy-MM-dd"),
-                startDate=DateTime.UtcNow,
+                customfield_10015 = startDate?.ToString("yyyy-MM-dd"),
                 assignee = assigneeId != null ? new { accountId = assigneeId } : null,
                 description = new
                 {

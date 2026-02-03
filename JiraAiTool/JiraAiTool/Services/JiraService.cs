@@ -70,6 +70,7 @@ public class JiraService
                 priority = new { name = priorityName },
                 issuetype = new { name = "Task" },
                 duedate = endDate?.ToString("yyyy-MM-dd"),
+                startDate=DateTime.UtcNow,
                 assignee = assigneeId != null ? new { accountId = assigneeId } : null,
                 description = new
                 {
@@ -84,6 +85,13 @@ public class JiraService
         };
 
         var response = await client.PostAsJsonAsync("/rest/api/3/issue", payload);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Jira API Error: {response.StatusCode} - {errorContent}");
+        }
+
         return response.IsSuccessStatusCode;
     }
 

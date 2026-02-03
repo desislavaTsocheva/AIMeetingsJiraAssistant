@@ -39,7 +39,7 @@ public class FileProcessingService
         catch (Exception ex)
         {
             Console.WriteLine($"Audio Conversion Error: {ex.Message}");
-            return "Грешка при обработка на аудио файла.";
+            return "Audio file compilation error";
         }
 
         outputStream.Position = 0;
@@ -47,7 +47,7 @@ public class FileProcessingService
 
         if (!File.Exists(modelPath))
         {
-            return "Моделът ggml-base.bin липсва в wwwroot/models/";
+            return "Model ggml-base.bin missing in wwwroot/models/";
         }
 
         using var factory = WhisperFactory.FromPath(modelPath);

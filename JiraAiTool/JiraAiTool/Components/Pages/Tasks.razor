@@ -36,6 +36,7 @@
             <table class="modern-table">
                 <thead>
                     <tr>
+                        <th>Title</th>
                         <th>Description</th>
                         <th>Assignee (Jira)</th>
                         <th>Deadline</th>
@@ -49,6 +50,7 @@
                         @if (!task.IsApproved)
                         {
                             <tr>
+                                <td style="width:600px"><input class="modern-input" @bind="task.Description" /></td>
                                 <td style="width:600px"><input class="modern-input" @bind="task.Description" /></td>
                                 <td>
                                     <select class="modern-input" @onchange="(e) => OnAssigneeChanged(task, e.Value?.ToString())">
@@ -72,6 +74,9 @@
                                 </td>
                                 <td class="actions">
                                     <button class="btn-success" @onclick="() => Approve(task)">&#10004;</button>
+                                    <button class="btn-info" title="Details" @onclick="() => ViewDetails(task.Id)">
+                                        <i class="oi oi-eye"></i> Info
+                                    </button>
                                     <button class="btn-danger" @onclick="() => Delete(task)">&#10008;</button>
                                 </td>
                             </tr>
@@ -102,6 +107,11 @@
     private List<TaskItem> filteredTasks => selectedDocId == 0
         ? allTasks
         : allTasks.Where(t => t.MeetingDocumentId == selectedDocId).ToList();
+
+    private void ViewDetails(int taskId)
+    {
+        NavigationManager.NavigateTo($"/Details/{taskId}");
+    }
 
     protected override async Task OnInitializedAsync()
     {

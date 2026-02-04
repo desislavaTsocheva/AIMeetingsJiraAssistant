@@ -1,0 +1,102 @@
+﻿@page "/Details/{TaskId:int}"
+@using JiraAiTool.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext DbContext
+@inject NavigationManager NavigationManager
+
+<div class="details-container">
+    <button class="back-btn" @onclick="GoBack">
+        <i class="oi oi-arrow-left"></i> Back to Dashboard
+    </button>
+
+    @if (task == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-3">Fetching task details...</p>
+        </div>
+    }
+    else
+    {
+        <div class="glass-card">
+            <div class="header-section">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="priority-pill priority-@task.Priority mb-3 d-inline-block">
+                            @task.Priority Priority
+                        </span>
+                        <h1 class="display-6 fw-bold text-dark">@task.Description</h1>
+                    </div>
+                    <div class="text-end">
+                        <div class="meta-label">Task Status</div>
+                        <div class="text-warning fw-bold">Pending Approval</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-section">
+                <div class="row g-5">
+                    <div class="col-lg-8">
+                        <div class="meta-label">Detailed Description</div>
+                        <div class="description-box">
+                            @task.Description
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="p-4 rounded-4" style="background: #f1f5f9;">
+                            <div class="mb-4">
+                                <div class="meta-label">Assignee</div>
+                                <div class="meta-value">
+                                    <div class="avatar-sm" style="width:24px; height:24px; background:#3b82f6; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px;">
+                                        @(task.AssigneeName?[0].ToString() ?? "U")
+                                    </div>
+                                    @(task.AssigneeName ?? "Unassigned")
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <div class="meta-label">Deadline</div>
+                                <div class="meta-value">
+                                    <i class="oi oi-calendar text-muted"></i>
+                                    @(task.Deadline?.ToString("MMMM dd, yyyy") ?? "No date set")
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <div class="meta-label">Source Document</div>
+                                <div class="meta-value" style="font-size: 0.9rem;">
+                                    <i class="oi oi-file text-muted"></i>
+                                    @task.Document?.Title
+                                </div>
+                            </div>
+
+                            <hr />
+
+                            <div>
+                                <div class="meta-label">Created At</div>
+                                <div class="meta-value" style="font-size: 0.85rem; color: #64748b;">
+                                    @task.CreatedAt.ToString("g")
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int TaskId { get; set; }
+    private TaskItem? task;
+
+    protected override async Task OnInitializedAsync()
+    {
+        task = await DbContext.Tasks
+            .Include(t => t.Document)
+            .FirstOrDefaultAsync(t => t.Id == TaskId);
+    }
+
+    private void GoBack() => NavigationManager.NavigateTo("/tasks");
+}

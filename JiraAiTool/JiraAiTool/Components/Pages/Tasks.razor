@@ -9,6 +9,7 @@
 @inject UserSession Session
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
+@inject IJSRuntime JS
 
 
 <div class="filter-bar card" style="margin-bottom: 20px; padding: 15px; display: flex; align-items: center; gap: 15px;">
@@ -51,7 +52,29 @@
                         {
                             <tr>
                                 <td style="width:600px"><input class="modern-input" @bind="task.Title" /></td>
-                                <td style="width:600px"><input class="modern-input" @bind="task.Description" /></td>
+
+
+                                <td>
+                                    <div class="voice-input-container" style="display:flex; border: 1px solid #ccc; border-radius: 4px; padding: 2px;">
+                                        <input style="border:none; flex-grow:1; outline:none; padding: 5px;"
+                                               @bind="task.Description" />
+
+                                        <button type="button"
+                                                style="border:none; background:none; cursor:pointer; padding: 0 10px;"
+                                                @onclick="() => ToggleVoice(task)">
+                                            @if (isListening && currentlyEditingTask == task)
+                                            {
+                                                <span style="color:red; font-weight:bold; animation: blink 1s infinite;">■ STOP</span>
+                                            }
+                                            else
+                                            {
+                                                <span style="font-size: 1.2rem;">🎤</span>
+                                            }
+                                        </button>
+                                    </div>
+                                </td>
+
+
                                 <td>
                                     <select class="modern-input" @onchange="(e) => OnAssigneeChanged(task, e.Value?.ToString())">
                                         <option value="">-- User --</option>
@@ -74,9 +97,7 @@
                                 </td>
                                 <td class="actions">
                                     <button class="btn-success" @onclick="() => Approve(task)">&#10004;</button>
-                                    <button class="btn-info" title="Details" @onclick="() => ViewDetails(task.Id)">
-                                        <i class="oi oi-eye"></i> Info
-                                    </button>
+                                    <button class="btn-info" @onclick="() => ViewDetails(task.Id)">&#9998;</button>
                                     <button class="btn-danger" @onclick="() => Delete(task)">&#10008;</button>
                                 </td>
                             </tr>
@@ -103,6 +124,46 @@
     private List<TaskItem> allTasks = new();
     private List<MeetingDocument> availableDocuments = new();
     private int selectedDocId = 0;
+
+
+    private TaskItem? currentlyEditingTask;
+
+    private bool isListening = false;
+
+    private async Task ToggleVoice(TaskItem task)
+    {
+        if (isListening)
+        {
+            isListening = false;
+            await JS.InvokeVoidAsync("speechToText.stopRecognition");
+        }
+        else
+        {
+            task.Description = "";
+            currentlyEditingTask = task;
+            isListening = true;
+            var dotNetHelper = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("speechToText.startRecognition", dotNetHelper);
+        }
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnVoiceResult(string transcript)
+    {
+        if (currentlyEditingTask != null)
+        {
+            currentlyEditingTask.Description = (currentlyEditingTask.Description + " " + transcript).Trim();
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public void OnVoiceEnd()
+    {
+        isListening = false;
+        StateHasChanged(); 
+    }
 
     private List<TaskItem> filteredTasks => selectedDocId == 0
         ? allTasks

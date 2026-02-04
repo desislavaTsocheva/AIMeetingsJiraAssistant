@@ -50,7 +50,7 @@
                         @if (!task.IsApproved)
                         {
                             <tr>
-                                <td style="width:600px"><input class="modern-input" @bind="task.Description" /></td>
+                                <td style="width:600px"><input class="modern-input" @bind="task.Title" /></td>
                                 <td style="width:600px"><input class="modern-input" @bind="task.Description" /></td>
                                 <td>
                                     <select class="modern-input" @onchange="(e) => OnAssigneeChanged(task, e.Value?.ToString())">
@@ -200,6 +200,7 @@
 
         var success = await Jira.CreateIssueAsync(
             summary,
+            task.Title,
             task.Description,
             task.CreatedAt,
             task.Deadline,

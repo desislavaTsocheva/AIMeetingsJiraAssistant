@@ -58,7 +58,7 @@ public class JiraService
         return JsonSerializer.Deserialize<List<JiraUser>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
     }
 
-    public async Task<bool> CreateIssueAsync(string summary, string description, DateTime? startDate, DateTime? endDate, string priorityName, string? assigneeId = null)
+    public async Task<bool> CreateIssueAsync(string summary, string description,string title, DateTime? startDate, DateTime? endDate, string priorityName, string? assigneeId = null)
     {
         using var client = CreateClient();
         var payload = new
@@ -66,7 +66,7 @@ public class JiraService
             fields = new
             {
                 project = new { key = _projectKey },
-                summary,
+                summary=title,
                 priority = new { name = priorityName },
                 issuetype = new { name = "Task" },
                 duedate = endDate?.ToString("yyyy-MM-dd"),

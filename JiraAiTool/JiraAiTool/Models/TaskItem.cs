@@ -4,6 +4,7 @@
     {
         public int Id { get; set; }
         public string Description { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
         public string? AssigneeName { get; set; } 
         public string? JiraAccountId { get; set; } 
         public DateTime? Deadline { get; set; }

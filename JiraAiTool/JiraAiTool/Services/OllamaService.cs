@@ -31,6 +31,7 @@ public class OllamaService
 
             Each object MUST have these exact keys:
             - ""Description"": Analyze the action based on the transcript and provide additional instructions for efficiency.
+            - ""Title"": Based on the description write short title for the task. 
             - ""AssigneeName"": Match exactly with one of these names: {usersText}. If no match, return the most likely name.
             - ""Deadline"": Date in YYYY-MM-DD or null.
             - ""Priority"": 'High' if deadline is soon or requested, otherwise 'Medium'.

@@ -304,3 +304,33 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Custom SweetAlert styling */
+.glass-card-popup {
+    border-radius: 16px !important;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+}
+
+.swal-title-custom {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+/* Ако искаш анимации, добави Animate.css в index.html или тук: */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate__fadeInUp {
+    animation: fadeInUp 0.4s ease-out;
+}

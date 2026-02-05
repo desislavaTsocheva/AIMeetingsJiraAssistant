@@ -33,79 +33,79 @@
     <div class="card full-width">
         <h5>Pending Task Approval</h5>
 
-        <div class="table-responsive">
-            <table class="modern-table">
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Description</th>
-                        <th>Assignee (Jira)</th>
-                        <th>Deadline</th>
-                        <th>Priority</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var task in filteredTasks)
+
+        @if (filteredTasks != null && filteredTasks.Any())
+        {
+            <div class="tasks-grid">
+                @foreach (var task in filteredTasks)
+                {
+                    @if (!task.IsApproved)
                     {
-                        @if (!task.IsApproved)
-                        {
-                            <tr>
-                                <td style="width:600px"><input class="modern-input" @bind="task.Title" /></td>
+                        <div class="task-card shadow-sm">
+                            <div class="task-card-header">
+                                <input class="title-input" @bind="task.Title" placeholder="Task Title..." />
 
+                                <select class="priority-select priority-@task.Priority" @bind="task.Priority">
+                                    <option value="High">High</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Low">Low</option>
+                                </select>
+                            </div>
 
-                                <td>
-                                    <div class="voice-input-container" style="display:flex; border: 1px solid #ccc; border-radius: 4px; padding: 2px;">
-                                        <input style="border:none; flex-grow:1; outline:none; padding: 5px;"
-                                               @bind="task.Description" />
-
-                                        <button type="button"
-                                                style="border:none; background:none; cursor:pointer; padding: 0 10px;"
-                                                @onclick="() => ToggleVoice(task)">
+                            <div class="task-card-body">
+                                <div class="field-group">
+                                    <label class="field-label">Description</label>
+                                    <div class="voice-input-wrapper">
+                                        <textarea class="desc-textarea" @bind="task.Description" rows="3"></textarea>
+                                        <button type="button" class="mic-overlay-btn" @onclick="() => ToggleVoice(task)">
                                             @if (isListening && currentlyEditingTask == task)
                                             {
-                                                <span style="color:red; font-weight:bold; animation: blink 1s infinite;">■ STOP</span>
+                                                <span class="rec-dot">● REC</span>
                                             }
                                             else
                                             {
-                                                <span style="font-size: 1.2rem;">🎤</span>
+                                                <span class="mic-icon">🎤</span>
                                             }
                                         </button>
                                     </div>
-                                </td>
+                                </div>
 
+                                <div class="task-meta-grid">
+                                    <div class="field-group">
+                                        <label class="field-label">Assign To</label>
+                                        <select class="modern-select" @onchange="(e) => OnAssigneeChanged(task, e.Value?.ToString())">
+                                            <option value="">-- User --</option>
+                                            @foreach (var user in jiraUsers)
+                                            {
+                                                <option value="@user.accountId" selected="@(task.JiraAccountId == user.accountId)">
+                                                    @user.displayName
+                                                </option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label">Due Date</label>
+                                        <input type="date" class="modern-date-input" @bind="task.Deadline" />
+                                    </div>
+                                </div>
+                            </div>
 
-                                <td>
-                                    <select class="modern-input" @onchange="(e) => OnAssigneeChanged(task, e.Value?.ToString())">
-                                        <option value="">-- User --</option>
-                                        @foreach (var user in jiraUsers)
-                                        {
-                                            <option value="@user.accountId" selected="@(task.JiraAccountId == user.accountId)">
-                                                @user.displayName
-                                            </option>
-                                        }
-                                    </select>
-                                </td>
-
-                                <td><input type="date" class="modern-input" @bind="task.Deadline" /></td>
-                                <td>
-                                    <select class="modern-input" @bind="task.Priority" style="width:80px">
-                                        <option value="High">High</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="Low">Low</option>
-                                    </select>
-                                </td>
-                                <td class="actions">
-                                    <button class="btn-success" @onclick="() => Approve(task)">&#10004;</button>
-                                    <button class="btn-info" @onclick="() => ViewDetails(task.Id)">&#9998;</button>
-                                    <button class="btn-danger" @onclick="() => Delete(task)">&#10008;</button>
-                                </td>
-                            </tr>
-                        }
+                            <div class="task-card-actions">
+                                <button class="action-btn btn-approve" @onclick="() => Approve(task)" title="Sync to Jira">
+                                    <i class="oi oi-check"></i> Approve
+                                </button>
+                                <button class="action-btn btn-details" @onclick="() => ViewDetails(task.Id)" title="View Info">
+                                    <i class="oi oi-pencil"></i> Details
+                                </button>
+                                <button class="action-btn btn-delete" @onclick="() => Delete(task)" title="Discard Task">
+                                    <i class="oi oi-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
                     }
-                </tbody>
-            </table>
-        </div>
+                }
+            </div>
+        }
     </div>
 }
 

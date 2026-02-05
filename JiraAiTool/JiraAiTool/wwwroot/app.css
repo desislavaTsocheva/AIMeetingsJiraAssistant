@@ -49,3 +49,40 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+/* Промяна на целия изглед на SweetAlert2 */
+.swal2-popup {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(10px); /* Прави го леко прозрачен като стъкло */
+    border-radius: 20px !important;
+    border: 1px solid rgba(105, 50, 77, 0.1);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1) !important;
+    font-family: 'Montserrat', sans-serif !important;
+}
+
+/* Стил за заглавието */
+.swal2-title {
+    color: #69324d !important; /* Твоят цвят */
+    font-weight: 700 !important;
+}
+
+/* Стил за текста */
+.swal2-html-container {
+    color: #4a4a4a !important;
+}
+
+/* Стил за бутона (да е точно като в контактната форма) */
+.swal2-confirm {
+    background-color: #69324d !important;
+    border-radius: 8px !important;
+    padding: 12px 30px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(105, 50, 77, 0.3) !important;
+}
+
+    /* Ефект при посочване на бутона */
+    .swal2-confirm:hover {
+        background-color: #55283e !important;
+    }

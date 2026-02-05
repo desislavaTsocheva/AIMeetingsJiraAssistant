@@ -21,6 +21,22 @@
     <a class="dismiss">🗙</a>
 </div>
 
+<HeadContent>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        window.prettyAlert = Swal.mixin({
+            buttonsStyling: false,
+            customClass: {
+                popup: 'glass-card-popup animate__animated animate__fadeInUp',
+                title: 'swal-title-custom',
+                confirmButton: 'btn-primary-glow'
+            }
+        });
+    </script>
+</HeadContent>
+
 @code{
     private bool IsAuthPage =>
         Nav.Uri.EndsWith("/") ||

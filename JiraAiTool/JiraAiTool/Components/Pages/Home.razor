@@ -148,21 +148,10 @@
         await JS.InvokeVoidAsync("prettyAlert.fire", new
         {
             icon = "success",
-            title = "Analysis Complete ✨",
-            html = $@"
-        <div style='text-align:center'>
-            <p style='font-size:1.1rem'>
-                AI extracted <b>{tasks.Count}</b> Jira tasks
-            </p>
-            <small style='color:#64748b'>
-                Ready for review in your pending list
-            </small>
-        </div>",
-            confirmButtonText = "View Tasks"
+            title = "Analysis Complete",
+            text = $"AI extracted {tasks.Count} Jira tasks",
+            confirmButtonText = "Okay"
         });
-
-
-
         meetingText = "";
         await LoadPendingTasks();
         isProcessing = false;
@@ -245,18 +234,10 @@
             await JS.InvokeVoidAsync("prettyAlert.fire", new
             {
                 icon = "success",
-                title = "Готово",
-                html = $@"
-        <p>
-            Успешно извлечени <b>{tasks.Count}</b> задачи
-        </p>
-        <small style='color:#64748b'>
-            Можеш да ги редактираш преди създаване в Jira
-        </small>",
-                confirmButtonText = "Продължи"
+                title = "Analysis Complete",
+                text = $"AI extracted {tasks.Count} Jira tasks",
+                confirmButtonText = "Okay"
             });
-
-
             uploadedFile = null;
             isFileInput = false;
         }
@@ -265,10 +246,11 @@
             await JS.InvokeVoidAsync("prettyAlert.fire", new
             {
                 icon = "error",
-                title = "Нещо се обърка",
-                text = "Файлът не можа да бъде обработен. Опитай отново или използвай текст.",
-                confirmButtonText = "ОК"
+                title = "Something went wrong!",
+                text = "File error occure.",
+                confirmButtonText = "OK"
             });
+
 
             Console.WriteLine($"Error processing file: {ex.Message}");
         }

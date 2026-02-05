@@ -1,97 +1,4 @@
-﻿/*select.modern-input {
-    cursor: pointer;
-}
-
-.btn-gradient:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.page-wrapper {
-    max-width: 1200px;
-    margin: auto;
-    padding: 32px;
-    font-family: Inter, sans-serif;
-    background: #f8fafc;
-}
-
-.header {
-    text-align: center;
-    margin-bottom: 28px;
-}
-
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    gap: 20px;
-}
-
-.card {
-    background: #ffffff;
-    border-radius: 18px;
-    padding: 20px;
-    box-shadow: 0 8px 28px rgba(0,0,0,0.06);
-}
-
-.full-width {
-    grid-column: 1 / -1;
-}
-
-.modern-textarea, .modern-input {
-    width: 100%;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-    padding: 12px;
-}
-
-.btn-gradient {
-    width: 100%;
-    padding: 14px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #6366f1, #22c55e);
-    color: white;
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
-}
-
-::deep .modern-file {
-    width: 100%;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-    padding: 12px 14px;
-}
-
-::deep .modern-table td {
-    padding: 10px;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.actions {
-    display: flex;
-    gap: 8px;
-}
-
-.btn-success {
-    background: #22c55e;
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 10px;
-    cursor: pointer;
-}
-
-.btn-danger {
-    background: #ef4444;
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 10px;
-    cursor: pointer;
-}
-*/
-
-:root {
+﻿:root {
     --primary: #6366f1;
     --primary-hover: #4f46e5;
     --success: #22c55e;
@@ -305,7 +212,6 @@
     }
 }
 
-/* Custom SweetAlert styling */
 .glass-card-popup {
     border-radius: 16px !important;
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -318,7 +224,6 @@
     color: #1e293b;
 }
 
-/* Ако искаш анимации, добави Animate.css в index.html или тук: */
 @keyframes fadeInUp {
     from {
         opacity: 0;

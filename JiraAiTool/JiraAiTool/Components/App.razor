@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿﻿
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -24,9 +25,9 @@
                 if (!SpeechRecognition) return;
 
                 recognition = new SpeechRecognition();
-                recognition.lang = 'en-US'; 
+                recognition.lang = 'en-US';
                 recognition.continuous = true;
-                recognition.interimResults = false; 
+                recognition.interimResults = false;
 
                 recognition.onresult = function (event) {
                     const lastResultIndex = event.results.length - 1;
@@ -50,31 +51,6 @@
             }
         };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        window.prettyAlert = Swal.mixin({
-            background: 'rgba(255,255,255,0.85)',
-            backdrop: `
-                rgba(15,23,42,0.45)
-                left top
-                no-repeat
-            `,
-            confirmButtonText: 'OK',
-            buttonsStyling: false,
-            customClass: {
-                popup: 'glass-card-popup animate__animated animate__fadeInUp',
-                title: 'swal-title-custom',
-                confirmButton: 'btn-primary-glow'
-            },
-            showClass: {
-                popup: 'animate__animated animate__fadeInUp animate__faster'
-            },
-            hideClass: {
-                popup: 'animate__animated animate__fadeOutDown animate__faster'
-            }
-        });
-    </script>
-
 </body>
 
 </html>

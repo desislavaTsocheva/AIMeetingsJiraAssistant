@@ -111,8 +111,8 @@
 
 
 @code {
-    private string meetingText = "";
-    private bool isProcessing = false;
+    //private string meetingText = "";
+    //private bool isProcessing = false;
 
     private bool isFileInput = false;
     private IBrowserFile? uploadedFile;
@@ -232,7 +232,7 @@
     {
         uploadedFile = e.File;
         isFileInput = true;
-        meetingText = "";
+        //meetingText = "";
     }
 
     private async Task LoadPendingTasks()

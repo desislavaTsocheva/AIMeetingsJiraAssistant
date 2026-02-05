@@ -11,6 +11,7 @@
         public bool IsApproved { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public string? Priority { get; set; }
+        public string? ProjectId { get; set; } 
         public int MeetingDocumentId { get; set; }
         public MeetingDocument? Document { get; set; }
     }

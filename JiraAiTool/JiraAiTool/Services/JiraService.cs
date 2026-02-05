@@ -10,6 +10,7 @@ public class JiraService
     private readonly UserSession _session;
     private readonly string _projectKey;
     private readonly AtlassianAuthService _authService;
+    private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public JiraService(IHttpClientFactory factory, UserSession session, AtlassianAuthService authService, IConfiguration config)
     {
@@ -58,14 +59,26 @@ public class JiraService
         return JsonSerializer.Deserialize<List<JiraUser>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
     }
 
-    public async Task<bool> CreateIssueAsync(string summary, string description,string title, DateTime? startDate, DateTime? endDate, string priorityName, string? assigneeId = null)
+    public async Task<List<JiraProject>> GetProjectsAsync()
+    {
+        using var client = CreateClient();
+        var response = await client.GetAsync("/rest/api/3/project");
+
+        if (!response.IsSuccessStatusCode) return new();
+
+        var json = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<List<JiraProject>>(json, _jsonOptions) ?? new();
+    }
+
+    public record JiraProject(string id, string key, string name);
+    public async Task<bool> CreateIssueAsync(string projectKey, string summary, string description,string title, DateTime? startDate, DateTime? endDate, string priorityName, string? assigneeId = null)
     {
         using var client = CreateClient();
         var payload = new
         {
             fields = new
             {
-                project = new { key = _projectKey },
+                project = new { key = projectKey },
                 summary=title,
                 priority = new { name = priorityName },
                 issuetype = new { name = "Task" },

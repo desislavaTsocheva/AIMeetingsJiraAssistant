@@ -7,6 +7,5 @@ public class User
     public string? ApiToken { get; set; } = default!;
     public string? BaseUrl { get; set; }
     public string? Email { get; set; }
-
     public DateTime CreatedAt { get; set; }
 }

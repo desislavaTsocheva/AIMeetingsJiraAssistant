@@ -70,6 +70,8 @@
 
     private List<TaskItem> pendingTasks = new();
     private List<JiraService.JiraUser> jiraUsers = new();
+    private List<JiraService.JiraProject> availableJiraProjects = new();
+    private string globalSelectedProjectKey = "";
 
     protected override async Task OnInitializedAsync()
     {

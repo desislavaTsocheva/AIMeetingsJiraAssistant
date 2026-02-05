@@ -10,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 @inject IJSRuntime JS
+@inject IConfiguration Configuration
 
 
 <div class="filter-bar card" style="margin-bottom: 20px; padding: 15px; display: flex; align-items: center; gap: 15px;">
@@ -83,6 +84,17 @@
                                             }
                                         </select>
                                     </div>
+
+                                    <div class="field-group">
+                                        <label class="field-label">Jira Project</label>
+                                        <select class="modern-select" @bind="task.ProjectId">
+                                            @foreach (var proj in availableJiraProjects)
+                                            {
+                                                <option value="@proj.key">@proj.name (@proj.key)</option>
+                                            }
+                                        </select>
+                                    </div>
+
                                     <div class="field-group">
                                         <label class="field-label">Due Date</label>
                                         <input type="date" class="modern-date-input" @bind="task.Deadline" />
@@ -111,8 +123,6 @@
 
 
 @code {
-    //private string meetingText = "";
-    //private bool isProcessing = false;
 
     private bool isFileInput = false;
     private IBrowserFile? uploadedFile;
@@ -129,6 +139,32 @@
     private TaskItem? currentlyEditingTask;
 
     private bool isListening = false;
+
+
+    private List<JiraService.JiraProject> availableJiraProjects = new();
+    private string globalSelectedProjectKey = "";
+    protected override async Task OnInitializedAsync()
+    {
+        bool userLoaded = await Session.LoadUserFromDb(DbContext);
+
+        if (userLoaded && !string.IsNullOrEmpty(Session.BaseUrl))
+        {
+            jiraUsers = await Jira.GetAllUsersAsync();
+
+            availableJiraProjects = await Jira.GetProjectsAsync();
+            if (availableJiraProjects.Any())
+            {
+                globalSelectedProjectKey = availableJiraProjects.First().key;
+            }
+
+            await LoadData();
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
 
     private async Task ToggleVoice(TaskItem task)
     {
@@ -162,7 +198,7 @@
     public void OnVoiceEnd()
     {
         isListening = false;
-        StateHasChanged(); 
+        StateHasChanged();
     }
 
     private List<TaskItem> filteredTasks => selectedDocId == 0
@@ -172,21 +208,6 @@
     private void ViewDetails(int taskId)
     {
         NavigationManager.NavigateTo($"/Details/{taskId}");
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        bool userLoaded = await Session.LoadUserFromDb(DbContext);
-
-        if (userLoaded && !string.IsNullOrEmpty(Session.BaseUrl))
-        {
-            jiraUsers = await Jira.GetAllUsersAsync();
-            await LoadData();
-        }
-        else
-        {
-            NavigationManager.NavigateTo("/");
-        }
     }
 
     private async Task LoadData()
@@ -232,7 +253,6 @@
     {
         uploadedFile = e.File;
         isFileInput = true;
-        //meetingText = "";
     }
 
     private async Task LoadPendingTasks()
@@ -248,6 +268,9 @@
     private async Task Approve(TaskItem task)
     {
         string? accountId = task.JiraAccountId;
+        string projectToUse = !string.IsNullOrEmpty(task.ProjectId)
+                          ? task.ProjectId
+                          : Configuration["JiraSettings:ProjectKey"];
 
         if (accountId == null && !string.IsNullOrWhiteSpace(task.AssigneeName))
         {
@@ -260,6 +283,7 @@
             : task.Description;
 
         var success = await Jira.CreateIssueAsync(
+            projectToUse,
             summary,
             task.Title,
             task.Description,

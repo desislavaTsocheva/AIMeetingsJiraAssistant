@@ -154,11 +154,12 @@
         {
             icon = "success",
             title = "Analysis Complete",
-            text = $"AI extracted {tasks.Count} Jira tasks",
+            text = $"AI successfully extracted Jira tasks",
             confirmButtonText = "Okay"
         });
         meetingText = "";
         await LoadPendingTasks();
+        await JS.InvokeVoidAsync("closeAlert");
         isProcessing = false;
     }
 
@@ -244,11 +245,12 @@
             {
                 icon = "success",
                 title = "Analysis Complete",
-                text = $"AI extracted {tasks.Count} Jira tasks",
+                text = $"AI successfully extracted Jira tasks",
                 confirmButtonText = "Okay"
             });
             uploadedFile = null;
             isFileInput = false;
+            await JS.InvokeVoidAsync("closeAlert");
         }
         catch (Exception ex)
         {
@@ -259,8 +261,7 @@
                 text = "File error occure.",
                 confirmButtonText = "OK"
             });
-
-
+            await JS.InvokeVoidAsync("closeAlert");
             Console.WriteLine($"Error processing file: {ex.Message}");
         }
         finally

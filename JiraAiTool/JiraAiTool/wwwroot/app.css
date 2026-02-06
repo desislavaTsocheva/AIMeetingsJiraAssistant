@@ -115,6 +115,8 @@ h1:focus {
     transition: all 0.2s ease !important;
     text-decoration: none !important;
     display: inline-block !important;
+    pointer-events: auto !important;
+   cursor:pointer;
 }
 
     .btn-primary-glow:hover {

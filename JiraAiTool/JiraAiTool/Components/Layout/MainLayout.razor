@@ -26,15 +26,25 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
+        // Замени стария window.prettyAlert с този:
         window.prettyAlert = Swal.mixin({
             buttonsStyling: false,
+            showConfirmButton: true,
             customClass: {
                 popup: 'glass-card-popup animate__animated animate__fadeInUp',
                 title: 'swal-title-custom',
                 confirmButton: 'btn-primary-glow'
+            },
+            // Тези редове казват на алерта как да изчезне, когато натиснеш бутона
+            hideClass: {
+                popup: 'animate__animated animate__fadeOutDown'
             }
         });
+           window.closeAlert = () => {
+            Swal.close();
+        };
     </script>
+
 </HeadContent>
 
 @code{

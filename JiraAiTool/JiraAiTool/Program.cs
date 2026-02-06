@@ -18,6 +18,11 @@ builder.Services.AddScoped<UserSession>();
 
 builder.Services.AddDataProtection();
 
+builder.Services.AddServerSideBlazor().AddHubOptions(o =>
+{
+    o.MaximumReceiveMessageSize = 100 * 1024 * 1024; // 100MB
+});
+
 builder.Services.AddHttpClient<AtlassianAuthService>();
 
 builder.Services.AddHttpClient("Atlassian", client =>

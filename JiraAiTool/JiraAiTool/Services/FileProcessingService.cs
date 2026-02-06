@@ -22,46 +22,60 @@ public class FileProcessingService
     public async Task<string> TranscribeAudio(Stream stream)
     {
         stream.Position = 0;
-        using var outputStream = new MemoryStream();
+
+        using var wavStream = new MemoryStream();
+        var tempFile = Path.GetTempFileName();
 
         try
         {
-            using (var reader = new StreamMediaFoundationReader(stream))
+            using (var fs = File.OpenWrite(tempFile))
             {
-                var outFormat = new WaveFormat(16000, 1); 
-                using (var resampler = new MediaFoundationResampler(reader, outFormat))
-                {
-                    resampler.ResamplerQuality = 60; 
-                    WaveFileWriter.WriteWavFileToStream(outputStream, resampler);
-                }
+                await stream.CopyToAsync(fs);
             }
+
+            using var reader = new MediaFoundationReader(tempFile);
+            var outFormat = new WaveFormat(16000, 1);
+
+            using var resampler = new MediaFoundationResampler(reader, outFormat)
+            {
+                ResamplerQuality = 60
+            };
+
+            WaveFileWriter.WriteWavFileToStream(wavStream, resampler);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Audio Conversion Error: {ex.Message}");
-            return "Audio file compilation error";
+            return "";
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
         }
 
-        outputStream.Position = 0;
-        var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "models", "ggml-base.bin");
+        wavStream.Position = 0;
+
+        var modelPath = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "wwwroot", "models", "ggml-base.bin");
 
         if (!File.Exists(modelPath))
-        {
-            return "Model ggml-base.bin missing in wwwroot/models/";
-        }
+            return "";
 
         using var factory = WhisperFactory.FromPath(modelPath);
         using var processor = factory.CreateBuilder()
-            .WithLanguage("bg")
+            .WithLanguageDetection()
             .Build();
 
         var sb = new System.Text.StringBuilder();
 
-        await foreach (var segment in processor.ProcessAsync(outputStream))
+        await foreach (var segment in processor.ProcessAsync(wavStream))
         {
             sb.Append(segment.Text).Append(" ");
         }
 
         return sb.ToString().Trim();
     }
+
 }

@@ -36,7 +36,10 @@
             <div class="file-upload-zone">
                 <i class="bi bi-cloud-arrow-up"></i>
                 <p>Upload meeting audio or documents</p>
-                <InputFile OnChange="OnFileSelected" class="file-input" accept=".pdf,.docx,.mp3,.wav" disabled="@isProcessing" />
+                <InputFile OnChange="OnFileSelected"
+                           class="file-input"
+                           accept=".pdf,.docx,.mp3,.wav,.mp4"
+                           disabled="@isProcessing" />
                 @if (uploadedFile != null)
                 {
                     <div class="file-badge">
@@ -169,7 +172,7 @@
         try
         {
             using var ms = new MemoryStream();
-            await uploadedFile.OpenReadStream(20 * 1024 * 1024).CopyToAsync(ms);
+            await uploadedFile.OpenReadStream(250 * 1024 * 1024).CopyToAsync(ms);
 
             using var scope = ServiceScopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -189,10 +192,14 @@
                 ms.Position = 0;
                 extractedText = fileService.ExtractTextFromWord(ms);
             }
-            else
+            else if (fileName.EndsWith(".mp3") || fileName.EndsWith(".wav") || fileName.EndsWith(".mp4"))
             {
                 ms.Position = 0;
                 extractedText = await fileService.TranscribeAudio(ms);
+            }
+            else
+            {
+                Console.WriteLine("Wrong file format");
             }
 
             Console.WriteLine($"Extracted text length: {extractedText.Length}");

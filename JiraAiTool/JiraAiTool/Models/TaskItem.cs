@@ -14,5 +14,6 @@
         public string? ProjectId { get; set; } 
         public int MeetingDocumentId { get; set; }
         public MeetingDocument? Document { get; set; }
+        public List<TaskResource> Resources { get; set; } = new();
     }
 }

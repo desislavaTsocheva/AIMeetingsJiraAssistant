@@ -10,4 +10,5 @@ public class AppDbContext : DbContext
     public DbSet<TaskItem> Tasks { get; set; }
     public DbSet<MeetingDocument> Documents { get; set; }
     public DbSet<User> Users { get; set; } 
+    public DbSet<TaskResource> TaskResources { get; set; } 
 }

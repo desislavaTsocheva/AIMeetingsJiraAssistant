@@ -90,7 +90,6 @@
         Nav.NavigateTo($"/setup-qr-code?email={Uri.EscapeDataString(email ?? "")}&url={Uri.EscapeDataString(siteUrl ?? "")}&accountId={accountId}");
     }
 
-    //DTOs objects 
     public record AtlassianSite(string id, string url);
     public record AtlassianMe(string account_id, string? email);
 }

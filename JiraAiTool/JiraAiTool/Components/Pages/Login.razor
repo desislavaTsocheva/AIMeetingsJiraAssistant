@@ -21,9 +21,6 @@
     </div>
 </div>
 
-
-@*Improvements:  Save the scope value & put the url in appsettings.json *@
-
 @code {
     private void RedirectToJira()
     {
@@ -32,7 +29,6 @@
         var scopeList = "read:me read:jira-user read:jira-work write:jira-work offline_access";
         var scopes = Uri.EscapeDataString(scopeList);
 
-        //Mechanism with unique id against csrf attacks 
         var state = Guid.NewGuid().ToString(); 
 
         var authUrl = $"https://auth.atlassian.com/authorize?" +

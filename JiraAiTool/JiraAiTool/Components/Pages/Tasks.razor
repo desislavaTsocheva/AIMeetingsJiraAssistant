@@ -121,7 +121,6 @@
     </div>
 }
 
-
 @code {
 
     private bool isFileInput = false;
@@ -143,6 +142,7 @@
 
     private List<JiraService.JiraProject> availableJiraProjects = new();
     private string globalSelectedProjectKey = "";
+
     protected override async Task OnInitializedAsync()
     {
         bool userLoaded = await Session.LoadUserFromDb(DbContext);
@@ -156,7 +156,6 @@
             {
                 globalSelectedProjectKey = availableJiraProjects.First().key;
             }
-
             await LoadData();
         }
         else
@@ -164,7 +163,6 @@
             NavigationManager.NavigateTo("/");
         }
     }
-
 
     private async Task ToggleVoice(TaskItem task)
     {
@@ -236,7 +234,6 @@
         }
     }
 
-
     private void OnAssigneeChanged(TaskItem task, string? accountId)
     {
         if (string.IsNullOrEmpty(accountId))
@@ -247,7 +244,6 @@
         task.JiraAccountId = accountId;
         task.AssigneeName = user?.displayName;
     }
-
 
     private void OnFileSelected(InputFileChangeEventArgs e)
     {
